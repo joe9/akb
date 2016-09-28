@@ -18,7 +18,8 @@ library
   include-dirs:      src
   other-extensions:     ForeignFunctionInterface
                       , PatternSynonyms
-  exposed-modules:     State
+  exposed-modules:     Lib
+                     , State
                      , Keymap.CustomDvorak
                      , KeySymbolDefinitions
   build-tools:       hsc2hs

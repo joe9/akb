@@ -1,7 +1,10 @@
 
 module Main where
 
-import Keymap.CustomDvorak
+import Lib
 
 main :: IO ()
-main = return () -- customDvorakKeymap
+main = print (fst (getKeySymbol customDvorak 10))
+
+getKeySymbol :: State -> KeyCode -> (Maybe KeySymbol, State)
+getKeySymbol s k = onKeyCode k s

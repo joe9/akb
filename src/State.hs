@@ -11,6 +11,9 @@ module State
     , onKey
     , updateModifiers
     , shiftIsLevelTwo
+    , KeyCode(..)
+    , Level(..)
+    , onKeyCode
     ) where
 
 import qualified Data.Vector as V
@@ -91,5 +94,5 @@ groups = Groups 0 . V.fromList . fmap group
 
 keyCodeAndGroupsToKeymap :: [(Int,Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
-  let lastKeyCode = fst (last keycodes)
+  let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
