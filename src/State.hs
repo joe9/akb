@@ -10,25 +10,29 @@ module State
   , onKey
   , updateModifiers
   , shiftIsLevelTwo
-  , KeyCode(..)
-  , Level(..)
+  , KeyCode
+  , Level
   , onKeyCode
+  , stickyUpdateModifiers
   ) where
 
+import           Data.Bits
 import           Data.Default
 import           Data.Maybe
-import           Data.Bits
 import qualified Data.Vector  as V
 
 --
 import KeySymbolDefinitions
 import Modifiers
 
-data GroupOnOverflow = Clamp | Wrap
+data GroupOnOverflow
+  = Clamp
+  | Wrap
 
 data Group
   = Group (V.Vector KeySymbol)
-  | Groups Int GroupOnOverflow
+  | Groups Int
+           GroupOnOverflow
            (V.Vector Group) -- Int for the index of the current active group
 
 data ModifierMap = ModifierMap
@@ -77,6 +81,7 @@ shiftIsLevelTwo s
 
 lookupFromGroup :: Int -> Group -> Maybe KeySymbol
 lookupFromGroup i (Group v) = v V.!? i
+lookupFromGroup _ _         = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
 onKey XK_Control_L =
@@ -89,11 +94,12 @@ stickyUpdateModifiers _ m state
     state {sLockedModifiers = setModifier (sLockedModifiers state) m}
   | testModifier (sEffectiveModifiers state) m =
     state {sLatchedModifiers = setModifier (sLatchedModifiers state) m}
-  | otherwise = state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
+  | otherwise =
+    state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
 
 updateModifiers :: KeySymbol -> Modifier -> State -> State
-updateModifiers _ m state
-  = state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
+updateModifiers _ m state =
+  state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
 
 stateChangeOnKey :: State -> KeySymbol -> Maybe (Maybe KeySymbol, State)
 stateChangeOnKey s keycode =

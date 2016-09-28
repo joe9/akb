@@ -1,10 +1,9 @@
 {-# LANGUAGE DefaultSignatures #-}
 
 module Modifiers
-  (
-    Modifiers
+  ( Modifiers
   , Modifier(..)
-  ,  toBitMask
+  , toBitMask
   , fromBitMask
   , isInBitMask
   , setModifier
@@ -12,9 +11,9 @@ module Modifiers
   , testModifier
   ) where
 
-import           Data.Bits
-import           Control.Monad
-import           Data.Word
+import Control.Monad
+import Data.Bits
+import Data.Word
 
 type Modifiers = Word32
 
@@ -47,17 +46,18 @@ data Modifier
 
 -- got this idea from
 -- http://stackoverflow.com/questions/15910363/represent-a-list-of-enums-bitwise-as-an-int
-
 class ToBitMask a where
   toBitMask :: a -> Word32
   -- | Using a DefaultSignatures extension to declare a default signature with
   -- an `Enum` constraint without affecting the constraints of the class itself.
-  default toBitMask :: Enum a => a -> Word32
+  default toBitMask :: Enum a =>
+    a -> Word32
   toBitMask = shiftL 1 . fromEnum
 
 instance ToBitMask Modifier
 
-instance ( ToBitMask a ) => ToBitMask [a] where
+instance (ToBitMask a) =>
+         ToBitMask [a] where
   toBitMask = foldr (.|.) 0 . map toBitMask
 
 setModifier :: Modifiers -> Modifier -> Modifiers
@@ -72,11 +72,19 @@ testModifier ms = testBit ms . fromEnum
 
 -- | Not making this a typeclass, since it already generalizes over all
 -- imaginable instances with help of `MonadPlus`.
-fromBitMask ::
-  ( MonadPlus m, Enum a, Bounded a, ToBitMask a ) =>
-    Word32 -> m a
-fromBitMask bm = msum $ map asInBM $ enumFrom minBound where
-  asInBM a = if isInBitMask bm a then return a else mzero
+fromBitMask
+  :: (MonadPlus m, Enum a, Bounded a, ToBitMask a)
+  => Word32 -> m a
+fromBitMask bm = msum $ map asInBM $ enumFrom minBound
+  where
+    asInBM a =
+      if isInBitMask bm a
+        then return a
+        else mzero
 
-isInBitMask :: ( ToBitMask a ) => Word32 -> a -> Bool
-isInBitMask bm a = let aBM = toBitMask a in aBM == aBM .&. bm
+isInBitMask
+  :: (ToBitMask a)
+  => Word32 -> a -> Bool
+isInBitMask bm a =
+  let aBM = toBitMask a
+  in aBM == aBM .&. bm

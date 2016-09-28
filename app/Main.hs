@@ -1,17 +1,18 @@
-
-{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
+import           Data.Maybe
 import qualified Data.Text.IO as TIO
-import Data.Maybe
+
 --
 import Lib
 import Modifiers
 
 main :: IO ()
 main = do
-  TIO.putStrLn (showKeySymbol (fromMaybe noKeySymbol (fst (getKeySymbol customDvorak 11))))
+  TIO.putStrLn
+    (showKeySymbol (fromMaybe noKeySymbol (fst (getKeySymbol customDvorak 11))))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
@@ -21,7 +22,6 @@ main = do
   print (fromBitMask 6 :: [Modifier])
   print (fromBitMask 7 :: [Modifier])
   print (fromBitMask 255 :: [Modifier])
-
   print (fromBitMask 0 :: Maybe Modifier)
   print (fromBitMask 1 :: Maybe Modifier)
   print (fromBitMask 2 :: Maybe Modifier)
