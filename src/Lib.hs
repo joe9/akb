@@ -2,7 +2,6 @@
 module Lib
     ( State(..)
     , Group(..)
-    , KeySymbol(..)
     , Modifier(..)
     , ModifierMap(..)
     , group
@@ -18,6 +17,7 @@ module Lib
     -- from KeySymbolDefinitions
     , KeySymbol(..)
     , showKeySymbol
+    , noKeySymbol
 
     -- from Keymap.CustomDvorak
     , customDvorakKeymap
