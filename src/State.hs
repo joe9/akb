@@ -22,9 +22,11 @@ import qualified Data.Vector  as V
 --
 import KeySymbolDefinitions
 
+data GroupOnOverflow = Clamp | Wrap
+
 data Group
   = Group (V.Vector KeySymbol)
-  | Groups Int
+  | Groups Int GroupOnOverflow
            (V.Vector Group) -- Int for the index of the current active group
 
 data Modifier
@@ -54,15 +56,15 @@ type Level = Int
 data State = State
   { sKeymap             :: V.Vector Group
   , sOnKey              :: KeySymbol -> Either ModifierMap KeySymbol
-  , sLevel              :: State -> Level
-  , sGroupNumber        :: State -> Int
+  , sLevel              :: State -> Level -- TODO State -> (Level,State)
+  , sGroupNumber        :: State -> (Int, State)
   , sEffectiveModifiers :: [Modifier]
   , sLatchedModifiers   :: [Modifier]
   , sLockedModifiers    :: [Modifier]
   }
 
 instance Default State where
-  def = State V.empty onKey shiftIsLevelTwo (\_ -> 0) [] [] []
+  def = State V.empty onKey shiftIsLevelTwo (\s -> (0, s)) [] [] []
 
 onKeyCode :: KeyCode -> State -> (Maybe KeySymbol, State)
 onKeyCode keycode state =
@@ -74,8 +76,7 @@ onKeyCode keycode state =
 -- TODO level might modify state if it cosumes Shift modifier
 shiftIsLevelTwo :: State -> Level
 shiftIsLevelTwo s
-  | elem Shift allCurrentModifiers =
-    1 -- zero indexed
+  | elem Shift allCurrentModifiers = 1 -- zero indexed
   | otherwise = 0 -- zero indexed
   where
     allCurrentModifiers =
@@ -86,8 +87,7 @@ lookupFromGroup i (Group v) = v V.!? i
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
 onKey XK_Control_L =
-  Left
-    (ModifierMap XK_Control_L Control (updateModifiers XK_Control_L Control))
+  Left (ModifierMap XK_Control_L Control (updateModifiers XK_Control_L Control))
 onKey k = Right k
 
 stickyUpdateModifiers :: KeySymbol -> Modifier -> State -> State
@@ -114,7 +114,7 @@ group :: [KeySymbol] -> Group
 group = Group . V.fromList
 
 groups :: [[KeySymbol]] -> Group
-groups = Groups 0 . V.fromList . fmap group
+groups = Groups 0 Clamp . V.fromList . fmap group
 
 keyCodeAndGroupsToKeymap :: [(Int, Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
