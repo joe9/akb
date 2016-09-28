@@ -17,6 +17,7 @@ module Lib
 
     -- from KeySymbolDefinitions
     , KeySymbol(..)
+    , showKeySymbol
 
     -- from Keymap.CustomDvorak
     , customDvorakKeymap
