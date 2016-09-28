@@ -12,6 +12,9 @@ import qualified Data.Text as T
 
 newtype KeySymbol = MkKeySymbol { unKeySymbol :: CInt } deriving (Eq, Show)
 
+-- need to convert the Text to String to use the below
+-- instance show KeySymbol where show = showKeySymbol
+
 noKeySymbol :: KeySymbol
 noKeySymbol = MkKeySymbol 0
 
