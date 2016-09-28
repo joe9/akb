@@ -17,7 +17,7 @@ customDvorak = def { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
                    }
 
 customDvorakOnKey :: KeySymbol -> Either ModifierMap KeySymbol
-customDvorakOnKey XK_Control_L = Left (ModifierMap XK_Control_L LeftControl (updateModifiers XK_Control_L LeftControl))
+customDvorakOnKey XK_Control_L = Left (ModifierMap XK_Control_L Control (updateModifiers XK_Control_L Control))
 customDvorakOnKey k  = Right k
 
 -- use the below commands:
