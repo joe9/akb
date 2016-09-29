@@ -21,8 +21,8 @@ module Lib
    -- from Keymap.CustomDvorak
   , customDvorakKeymap
   , customDvorak
-  , selectConfig
   -- from Lib.hs
+  , pickInitialState
   , skb_state_new
   , skb_state_key_get_one_sym
   , skb_state_unref
@@ -74,8 +74,7 @@ data StateIORef =
 
 skb_state_new :: CInt -> IO (StablePtr StateIORef)
 skb_state_new i = do
-  let (configIndex, config) = selectValidConfig i
-  stateIORef <- newIORef (def {sConfigIndex = configIndex})
+  stateIORef <- newIORef (pickInitialState i)
   newStablePtr (StateIORef stateIORef)
 foreign export ccall skb_state_new :: CInt -> IO (StablePtr StateIORef)
 
@@ -83,7 +82,7 @@ skb_state_key_get_one_sym :: StablePtr StateIORef -> KeyCode -> IO Word32
 skb_state_key_get_one_sym ptr keycode = do
   (StateIORef stateIORef) <- deRefStablePtr ptr
   state <- readIORef stateIORef
-  let (keySym, updatedState) = onKeyCode (selectConfig (sConfigIndex state)) keycode state
+  let (keySym, updatedState) = onKeyCode keycode state
   writeIORef stateIORef updatedState
   case keySym of
     Just k -> return (unKeySymbol k)
@@ -94,18 +93,6 @@ skb_state_unref :: StablePtr StateIORef -> IO ()
 skb_state_unref = freeStablePtr
 foreign export ccall skb_state_unref :: StablePtr StateIORef -> IO ()
 
-selectValidConfig :: CInt -> (CInt,Config)
-selectValidConfig i
-  | NonEmpty.length configs > fi = (i,configs NonEmpty.!! fi)
-  | otherwise = (0,configs NonEmpty.!! 0)
-  where fi = fromIntegral i
-
-selectConfig :: CInt -> Config
-selectConfig i
-  | NonEmpty.length configs > fi = configs NonEmpty.!! fi
-  | otherwise = configs NonEmpty.!! 0
-  where fi = fromIntegral i
-
-configs :: NonEmpty.NonEmpty Config
--- configs = NonEmpty.fromList [def]
-configs = NonEmpty.fromList [customDvorak]
+pickInitialState :: CInt -> State
+pickInitialState 0 = def
+pickInitialState _ = customDvorak

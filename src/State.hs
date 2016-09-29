@@ -1,6 +1,5 @@
 module State
   ( State(..)
-  , Config(..)
   , Group(..)
   , GroupOnOverflow(..)
   , KeySymbol(..)
@@ -108,35 +107,29 @@ type Level = Int
 -- <joe9> geekosaur: I agree. the IORef idea is a lot better. just want to get my head
 --        around the intricacies.  [15:36]
 -- <geekosaur> it does become complex when you're driving it from the C end :/
-data Config = Config
-  { cKeymap             :: V.Vector Group
-  , cOnKey              :: KeySymbol -> Either ModifierMap KeySymbol
-  , cLevel              :: State -> Level -- TODO State -> (Level,State)
-  , cGroupNumber        :: State -> (Int, State)
-  }
-
-instance Default Config where
-  def = Config V.empty onKey shiftIsLevelTwo (\s -> (0, s))
 
 -- TODO group is a state level attribute, not a key level attribute
 -- TODO could change this to an unboxed vector for performance
 data State = State
-  { sConfigIndex :: !CInt
+  { sKeymap             :: V.Vector Group
+  , sOnKey              :: KeySymbol -> Either ModifierMap KeySymbol
+  , sLevel              :: State -> Level -- TODO State -> (Level,State)
+  , sGroupNumber        :: State -> (Int, State)
   , sEffectiveModifiers :: !Modifiers
   , sLatchedModifiers   :: !Modifiers
   , sLockedModifiers    :: !Modifiers
-  } deriving (Eq, Show)
+  }
 
-instance Default State where def = State 0 0 0 0
+instance Default State where def = State V.empty onKey shiftIsLevelTwo (\s -> (0, s)) 0 0 0
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
-onKeyCode :: Config -> KeyCode -> State -> (Maybe KeySymbol, State)
-onKeyCode config keycode state =
+onKeyCode :: KeyCode -> State -> (Maybe KeySymbol, State)
+onKeyCode keycode state =
   fromMaybe
     (Nothing, state)
-    ((cKeymap config) V.!? (fromIntegral keycode)
-     >>= lookupFromGroup (cLevel config state)
+    ((sKeymap state) V.!? (fromIntegral keycode)
+     >>= lookupFromGroup (sLevel state state)
      >>= stateChangeOnKey state)
 
 -- TODO level might modify state if it cosumes Shift modifier
