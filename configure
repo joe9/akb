@@ -1,14 +1,16 @@
 #!/bin/sh
 
+echo "in configure"
 while [ $# -ne 0 ]; do
     case $1 in
         --with-compiler=*)
+            echo "in configure with compiler"
             v=`${1#--with-compiler=} --numeric-version`
-            cat > eval.buildinfo <<EOF
+            cat > skb.buildinfo <<EOF
 extra-libraries: HSrts-ghc$v
 EOF
             break
-        ;;
+            ;;
         *)
             shift
     esac

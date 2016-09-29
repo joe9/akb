@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include "skb.h"
 
+/* https://www.vex.net/~trebla/haskell/so.xhtml */
+/* http://stackoverflow.com/questions/27815467/haskell-dynamic-library */
+/* http://stackoverflow.com/questions/5131182/how-to-compile-haskell-to-a-static-library */
+/* https://mostlycode.wordpress.com/2010/01/03/shared-haskell-so-library-with-ghc-6-10-4-and-cabal/ */
+
 /* 2 types of build methods: */
 /* 1. using gcc: */
 /*     TMPDIR=/tmp/ghc stack exec ghc -- -O2 -dynamic -shared -fPIC -o libSkb.so Skb.hs skb.c -lHSrts-ghc8.0.1 */

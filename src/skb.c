@@ -1,6 +1,13 @@
 
 #include <HsFFI.h>
 
+/* https://www.vex.net/~trebla/haskell/so.xhtml */
+/* http://stackoverflow.com/questions/27815467/haskell-dynamic-library */
+/* http://stackoverflow.com/questions/5131182/how-to-compile-haskell-to-a-static-library */
+/* https://mostlycode.wordpress.com/2010/01/03/shared-haskell-so-library-with-ghc-6-10-4-and-cabal/ */
+
+/* TODO could not figure out how to get this to do the below with cabal */
+
 /* 2 types of build methods: */
 /* 1. using gcc: */
 /*     TMPDIR=/tmp/ghc stack exec ghc -- -O2 -dynamic -shared -fPIC -o libSkb.so Skb.hs skb.c -lHSrts-ghc8.0.1 */
@@ -11,14 +18,14 @@
 /*       TMPDIR=/tmp/ghc stack exec ghc -- --make -no-hs-main -optc-O2 test-libSkb.c skb.o -L. -I. -lSkb && ./a.out */
 
 
-extern void __stginit_Skb(void);
+extern void __stginit_skb(void);
 
 void xkb_context_new(void)
 {
-   static char *argv[] = { "libSkb.so", 0 }, **argv_ = argv;
+   static char *argv[] = { "libskb.so", 0 }, **argv_ = argv;
    static int argc = 1;
    hs_init(&argc, &argv_);
-   hs_add_root(__stginit_Skb);
+   hs_add_root(__stginit_skb);
 }
 
 void xkb_context_unref(void)
