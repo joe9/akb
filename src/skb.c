@@ -18,14 +18,14 @@
 /*       TMPDIR=/tmp/ghc stack exec ghc -- --make -no-hs-main -optc-O2 test-libSkb.c skb.o -L. -I. -lSkb && ./a.out */
 
 
-extern void __stginit_skb(void);
+extern void __stginit_Skb(void);
 
 void xkb_context_new(void)
 {
    static char *argv[] = { "libskb.so", 0 }, **argv_ = argv;
    static int argc = 1;
    hs_init(&argc, &argv_);
-   hs_add_root(__stginit_skb);
+   hs_add_root(__stginit_Skb);
 }
 
 void xkb_context_unref(void)
