@@ -68,6 +68,7 @@ fibonacciv_hs = SV.map fromIntegral . fibonacciv . fromIntegral
 -- https://wiki.haskell.org/Foreign_Function_Interface
 -- http://stackoverflow.com/questions/8964362/haskell-stableptr
 -- http://stackoverflow.com/questions/14125057/how-to-poke-a-vector-or-to-get-a-ptr-vector-to-its-data
+-- https://wiki.haskell.org/Calling_Haskell_from_C
 data StateIORef =
   StateIORef (IORef State)
 
@@ -76,6 +77,7 @@ skb_state_new i = do
   let (configIndex, config) = selectValidConfig i
   stateIORef <- newIORef (def {sConfigIndex = configIndex})
   newStablePtr (StateIORef stateIORef)
+foreign export ccall skb_state_new :: CInt -> IO (StablePtr StateIORef)
 
 skb_state_key_get_one_sym :: StablePtr StateIORef -> KeyCode -> IO Word32
 skb_state_key_get_one_sym ptr keycode = do
@@ -86,9 +88,11 @@ skb_state_key_get_one_sym ptr keycode = do
   case keySym of
     Just k -> return (unKeySymbol k)
     Nothing -> return (unKeySymbol XK_NoSymbol)
+foreign export ccall skb_state_key_get_one_sym :: StablePtr StateIORef -> KeyCode -> IO Word32
 
 skb_state_unref :: StablePtr StateIORef -> IO ()
 skb_state_unref = freeStablePtr
+foreign export ccall skb_state_unref :: StablePtr StateIORef -> IO ()
 
 selectValidConfig :: CInt -> (CInt,Config)
 selectValidConfig i
