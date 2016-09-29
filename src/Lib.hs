@@ -22,6 +22,10 @@ module Lib
   , customDvorakKeymap
   , customDvorak
   , selectConfig
+  -- from Lib.hs
+  , skb_state_new
+  , skb_state_key_get_one_sym
+  , skb_state_unref
   ) where
 
 -- import qualified Data.Vector as V
