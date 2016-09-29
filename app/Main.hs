@@ -6,7 +6,7 @@ import           Data.Maybe
 import qualified Data.Text.IO as TIO
 
 --
-import Lib
+import Skb
 import Modifiers
 
 main :: IO ()

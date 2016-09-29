@@ -1,6 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
-module Lib
+module Skb
   ( State(..)
   , Group(..)
   , Modifier(..)

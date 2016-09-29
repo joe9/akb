@@ -18,7 +18,7 @@ library
   include-dirs:      src
   other-extensions:     ForeignFunctionInterface
                       , PatternSynonyms
-  exposed-modules:     Lib
+  exposed-modules:     Skb
                      , Modifiers
                      , KeySymbolDefinitions
                      , State
