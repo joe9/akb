@@ -19,10 +19,10 @@ library
   other-extensions:     ForeignFunctionInterface
                       , PatternSynonyms
   exposed-modules:     Lib
+                     , Modifiers
+                     , KeySymbolDefinitions
                      , State
                      , Keymap.CustomDvorak
-                     , KeySymbolDefinitions
-                     , Modifiers
   build-tools:       hsc2hs
   build-depends:       base >= 4.7 && < 5
                      , vector
@@ -37,6 +37,7 @@ executable lookup-keycode-exe
   build-depends:       base
                      , lookup-keycode
                      , text
+                     , data-default
   default-language:    Haskell2010
 
 test-suite lookup-keycode-test

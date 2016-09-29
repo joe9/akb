@@ -10,10 +10,10 @@ import Data.Default
 --
 import KeySymbolDefinitions
 
-customDvorak :: State
-customDvorak = def { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
-                   , sOnKey = customDvorakOnKey
-                   , sLevel = shiftIsLevelTwo
+customDvorak :: Config
+customDvorak = def { cKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
+                   , cOnKey = customDvorakOnKey
+                   , cLevel = shiftIsLevelTwo
                    }
 
 customDvorakOnKey :: KeySymbol -> Either ModifierMap KeySymbol

@@ -1,5 +1,0 @@
-
-module KeySymbol
-    ( KeySymbol(..)
-    ) where
-

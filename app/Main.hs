@@ -3,6 +3,7 @@
 module Main where
 
 import           Data.Maybe
+import           Data.Default
 import qualified Data.Text.IO as TIO
 
 --
@@ -12,7 +13,7 @@ import Modifiers
 main :: IO ()
 main = do
   TIO.putStrLn
-    (showKeySymbol (fromMaybe noKeySymbol (fst (getKeySymbol customDvorak 11))))
+    (showKeySymbol (fromMaybe noKeySymbol (fst (getKeySymbol def 10))))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
@@ -28,4 +29,4 @@ main = do
   print (fromBitMask 4 :: Maybe Modifier)
 
 getKeySymbol :: State -> KeyCode -> (Maybe KeySymbol, State)
-getKeySymbol s k = onKeyCode k s
+getKeySymbol s k = onKeyCode (selectConfig (sConfigIndex s)) k s

@@ -1,6 +1,8 @@
 module State
   ( State(..)
+  , Config(..)
   , Group(..)
+  , GroupOnOverflow(..)
   , KeySymbol(..)
   , Modifier(..)
   , ModifierMap(..)
@@ -20,12 +22,9 @@ import           Data.Bits
 import           Data.Default
 import           Data.Maybe
 import          qualified Data.List.NonEmpty as NonEmpty
-import GHC.Generics
-import Foreign.Storable
-import Foreign.CStorable
+import Foreign.C.Types
+import Data.Word
 import qualified Data.Vector  as V
-import qualified Data.IntMap.Strict  as IntMap
-
 --
 import KeySymbolDefinitions
 import Modifiers
@@ -119,35 +118,26 @@ data Config = Config
 instance Default Config where
   def = Config V.empty onKey shiftIsLevelTwo (\s -> (0, s))
 
-data StateToConfig = NonEmpty.NonEmpty Config
-
-configs :: StateToConfig
-configs = NonEmpty.fromList [def]
-
 -- TODO group is a state level attribute, not a key level attribute
+-- TODO could change this to an unboxed vector for performance
 data State = State
   { sConfigIndex :: !CInt
   , sEffectiveModifiers :: !Modifiers
   , sLatchedModifiers   :: !Modifiers
   , sLockedModifiers    :: !Modifiers
-  } deriving (Eq, Show, Generic, Default)
+  } deriving (Eq, Show)
 
-instance CStorable State
-
-instance Storable State where
-  sizeOf = cSizeOf
-  alignment = cAlignment
-  poke = cPoke
-  peek = cPeek
+instance Default State where def = State 0 0 0 0
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
-onKeyCode :: KeyCode -> State -> (Maybe KeySymbol, State)
-onKeyCode keycode state =
+onKeyCode :: Config -> KeyCode -> State -> (Maybe KeySymbol, State)
+onKeyCode config keycode state =
   fromMaybe
     (Nothing, state)
-    ((sKeymap state) V.!? keycode >>= lookupFromGroup (sLevel state state) >>=
-     stateChangeOnKey state)
+    ((cKeymap config) V.!? (fromIntegral keycode)
+     >>= lookupFromGroup (cLevel config state)
+     >>= stateChangeOnKey state)
 
 -- TODO level might modify state if it cosumes Shift modifier
 shiftIsLevelTwo :: State -> Level
@@ -196,3 +186,4 @@ keyCodeAndGroupsToKeymap :: [(Int, Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
+
