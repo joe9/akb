@@ -1,2 +1,2 @@
-# lookup-keycode
-Understandable non-compatible alternative to libxkbcommon
+# skb
+Understandable non-backward-compatible alternative to libxkbcommon
