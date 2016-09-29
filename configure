@@ -1,13 +1,13 @@
 #!/bin/sh
 
-echo "in configure"
 while [ $# -ne 0 ]; do
     case $1 in
         --with-compiler=*)
-            echo "in configure with compiler"
             v=`${1#--with-compiler=} --numeric-version`
+            libdir=`${1#--with-compiler=} --print-libdir`
             cat > skb.buildinfo <<EOF
 extra-libraries: HSrts-ghc$v
+extra-lib-dirs: ${libdir}/rts
 EOF
             break
             ;;

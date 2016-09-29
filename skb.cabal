@@ -9,9 +9,10 @@ author:              Author name here
 maintainer:          example@example.com
 copyright:           2016 Author name here
 category:            Web
-build-type:          Configure
-extra-source-files:  configure
-extra-tmp-files:     skb.buildinfo
+-- build-type:          Configure
+build-type:          Simple
+-- extra-source-files:  configure
+-- extra-tmp-files:     skb.buildinfo
 cabal-version:       >=1.10
 
 library
@@ -30,7 +31,10 @@ library
                      , text
                      , data-default
   default-language:    Haskell2010
-  c-sources: src/skb.c
+  c-sources: src/skb.c, src/skb.h
+-- could not get the below options to work
+--   extra-libraries: HSrts-ghc8.0.1
+--   extra-lib-dirs: /home/j/var/stack/programs/x86_64-linux/ghc-8.0.1/lib/ghc-8.0.1/rts/
 
 executable skb-exe
   hs-source-dirs:      app
