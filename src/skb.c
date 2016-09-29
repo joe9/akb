@@ -1,6 +1,5 @@
 
 #include <HsFFI.h>
-#include "Skb_stub.h"
 extern void __stginit_Skb(void);
 
 static void xkb_context_new(void) __attribute__((constructor));
