@@ -10,7 +10,7 @@ import Foreign
 import Foreign.C.Types
 import qualified Data.Text as T
 
-newtype KeySymbol = MkKeySymbol { unKeySymbol :: CInt } deriving (Eq, Show)
+newtype KeySymbol = MkKeySymbol { unKeySymbol :: Word32 } deriving (Eq, Show)
 
 -- need to convert the Text to String to use the below
 -- instance show KeySymbol where show = showKeySymbol
@@ -20,6 +20,8 @@ noKeySymbol = MkKeySymbol 0
 
 -- https://www.schoolofhaskell.com/user/icelandj/Pattern%20synonyms
 
+-- TODO generate the keysymbols below from libxkbcommon symbol defs as
+-- wlc does
 -- generated using the below commands:
 --- sh generate_key_symbol_definitions.sh >|/tmp/keysymsout.txt
 
