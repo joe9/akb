@@ -43,7 +43,7 @@ import qualified Data.Vector.Storable as SV
 import qualified Data.Vector.Storable.Internal as SVI
 import qualified GHC.ForeignPtr as FP
 import Data.IORef
-import Bindings.Xkbcommon
+-- import Bindings.Xkbcommon
 
 --
 import KeySymbolDefinitions

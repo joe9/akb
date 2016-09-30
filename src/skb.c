@@ -1,8 +1,5 @@
 
 #include <HsFFI.h>
-#include <stdlib.h>
-
-#include "skb.h"
 
 /* https://www.vex.net/~trebla/haskell/so.xhtml */
 /* http://stackoverflow.com/questions/27815467/haskell-dynamic-library */
@@ -24,32 +21,19 @@
 
 extern void __stginit_Skb(void);
 
-/* no need of the context anywhere but just leaving a dummy value */
-struct xkb_context{int dummy;};
-
 /* skb would be happy if this function had a definition of
    void xkb_context_new (void) but that would break compatibility.
    Hence leaving it as-is. */
-struct xkb_context *
-xkb_context_new(enum xkb_context_flags flags)
+void
+skb_context_new(void)
 {
    static char *argv[] = { "libskb.so", 0 }, **argv_ = argv;
    static int argc = 1;
    hs_init(&argc, &argv_);
    hs_add_root(__stginit_Skb);
-   struct xkb_context *ctx = calloc(1, sizeof(*ctx));
-   if (!ctx)
-      return NULL;
-   return ctx;
-
 }
 
-void xkb_context_unref(struct xkb_context *ctx)
+void skb_context_unref(void)
 {
    hs_exit();
-
-   if (!ctx)
-      return;
-
-   free(ctx);
 }

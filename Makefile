@@ -9,12 +9,13 @@ GHCVERSION=`TMPDIR=/tmp/ghc stack exec ghc -- --numeric-version`
 all: src/libskb.so
 
 clean:
-	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h
+	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h src/KeySymbolDefinitions.hs
 
 src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 	test -d $(TMPDIR) || mkdir $(TMPDIR)
 	test -d $(TMPDIR)/build || mkdir $(TMPDIR)/build
 	TMPDIR=$(TMPDIR) stack build
+	cd src && hsc2hs KeySymbolDefinitions.hsc
 	cd src && \
 		TMPDIR=$(TMPDIR) stack exec ghc -- --make \
 		-odir $(TMPDIR)/build/ \

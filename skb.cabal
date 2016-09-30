@@ -22,7 +22,6 @@ library
                       , PatternSynonyms
   exposed-modules:     Skb
                      , Modifiers
-                     , Bindings.Xkbcommon
                      , KeySymbolDefinitions
                      , State
                      , Keymap.CustomDvorak
@@ -31,7 +30,6 @@ library
                      , vector
                      , text
                      , data-default
-                     , bindings-DSL
   default-language:    Haskell2010
   c-sources: src/skb.c
 -- could not get the below options to work
