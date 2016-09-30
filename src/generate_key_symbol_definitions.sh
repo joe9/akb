@@ -1,6 +1,6 @@
 #!/bin/sh
 
-input="xproto/keysymdef.h"
+input="libxkbcommon/xkbcommon/xkbcommon-keysyms.h"
 # output="/tmp/keysymifdefs.txt"
 
 cat <<EOH
@@ -20,21 +20,13 @@ newtype KeySymbol = MkKeySymbol { unKeySymbol :: Word32 } deriving (Eq, Show)
 -- need to convert the Text to String to use the below
 -- instance show KeySymbol where show = showKeySymbol
 
-noKeySymbol :: KeySymbol
-noKeySymbol = MkKeySymbol 0
-
 -- https://www.schoolofhaskell.com/user/icelandj/Pattern%20synonyms
 
--- TODO generate the keysymbols below from libxkbcommon symbol defs as
--- wlc does
 -- generated using the below commands:
 --- sh generate_key_symbol_definitions.sh >|/tmp/keysymsout.hsc
 
 
 EOH
-
-grep "^#ifdef" "${input}" |
-    sed --expression="s/\(^#ifdef \(\S*\).*\)/-- \1\n#define \2 1/"
 
 echo ""
 echo "#include \"${input}\""
@@ -62,14 +54,13 @@ echo ""
 #     sed --expression="s/\(^#define \(\S*\) .*\)/-- \1\nfromKeySymbol #{const \2} = \2/"
 # echo "fromKeySymbol _ = XK_VoidSymbol"
 
-echo "pattern XK_NoSymbol :: KeySymbol"
-echo "pattern XK_NoSymbol = MkKeySymbol 0"
-grep "^#define" "${input}" |
+grep "^#define XKB_KEY_" "${input}" |
+    expand --tabs=4 - |
     sed --expression="s/\(^#define \(\S*\) .*\)/-- \1\npattern \2 :: KeySymbol\npattern \2 = MkKeySymbol #{const \2} /"
 
 echo ""
 echo "showKeySymbol :: KeySymbol -> T.Text"
-echo "showKeySymbol XK_NoSymbol = \"XK_NoSymbol\""
-grep "^#define" "${input}" |
-    sed --expression="s/\(^#define \(XK_\(\S*\)\) .*\)/-- \1\nshowKeySymbol \2 = \"\3\"/"
+grep "^#define XKB_KEY_" "${input}" |
+    expand --tabs=4 - |
+    sed --expression="s/\(^#define \(XKB_KEY_\(\S*\)\) .*\)/-- \1\nshowKeySymbol \2 = \"\3\"/"
 echo "showKeySymbol _ = \"Unknown symbol\""
