@@ -13,3 +13,4 @@ Install instructions:
   Install libxkbcommon
   Install skb
   cd <include directory>/libxkbcommon, ln -sf skb.h libxkbcommon.h
+  It is probably not a good idea to do the above, instead, leave skb and libxkbcommon as 2 different entities with some common structures.

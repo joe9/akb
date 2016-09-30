@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+/* instead of trying to replace libxkbcommon, it is probably */
+/*  less intrusive to just provide skb and rename the functions to skb_* */
+
 /**
  * @file
  * Main libxkbcommon API.
@@ -397,8 +400,8 @@ xkb_keysym_from_name(const char *name, enum xkb_keysym_flags flags);
  *
  * @sa xkb_state_key_get_utf8()
  */
-int
-xkb_keysym_to_utf8(xkb_keysym_t keysym, char *buffer, size_t size);
+/* commented out by skb */
+/* int xkb_keysym_to_utf8(xkb_keysym_t keysym, char *buffer, size_t size); */
 
 /**
  * Get the Unicode/UTF-32 representation of a keysym.
@@ -412,8 +415,8 @@ xkb_keysym_to_utf8(xkb_keysym_t keysym, char *buffer, size_t size);
  *
  * @sa xkb_state_key_get_utf32()
  */
-uint32_t
-xkb_keysym_to_utf32(xkb_keysym_t keysym);
+/* commented out by skb */
+/* uint32_t xkb_keysym_to_utf32(xkb_keysym_t keysym); */
 
 /** @} */
 
@@ -492,8 +495,9 @@ xkb_context_unref(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-void
-xkb_context_set_user_data(struct xkb_context *context, void *user_data);
+/* commented out by skb */
+/* void */
+/* xkb_context_set_user_data(struct xkb_context *context, void *user_data); */
 
 /**
  * Retrieves stored user data from the context.
@@ -506,8 +510,9 @@ xkb_context_set_user_data(struct xkb_context *context, void *user_data);
  *
  * @memberof xkb_context
  **/
-void *
-xkb_context_get_user_data(struct xkb_context *context);
+/* commented out by skb */
+/* void * */
+/* xkb_context_get_user_data(struct xkb_context *context); */
 
 /** @} */
 
@@ -535,8 +540,9 @@ xkb_context_get_user_data(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-int
-xkb_context_include_path_append(struct xkb_context *context, const char *path);
+/* commented out by skb */
+/* int */
+/* xkb_context_include_path_append(struct xkb_context *context, const char *path); */
 
 /**
  * Append the default include paths to the context's include path.
@@ -545,8 +551,9 @@ xkb_context_include_path_append(struct xkb_context *context, const char *path);
  *
  * @memberof xkb_context
  */
-int
-xkb_context_include_path_append_default(struct xkb_context *context);
+/* commented out by skb */
+/* int */
+/* xkb_context_include_path_append_default(struct xkb_context *context); */
 
 /**
  * Reset the context's include path to the default.
@@ -558,24 +565,27 @@ xkb_context_include_path_append_default(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-int
-xkb_context_include_path_reset_defaults(struct xkb_context *context);
+/* commented out by skb */
+/* int */
+/* xkb_context_include_path_reset_defaults(struct xkb_context *context); */
 
 /**
  * Remove all entries from the context's include path.
  *
  * @memberof xkb_context
  */
-void
-xkb_context_include_path_clear(struct xkb_context *context);
+/* commented out by skb */
+/* void */
+/* xkb_context_include_path_clear(struct xkb_context *context); */
 
 /**
  * Get the number of paths in the context's include path.
  *
  * @memberof xkb_context
  */
-unsigned int
-xkb_context_num_include_paths(struct xkb_context *context);
+/* commented out by skb */
+/* unsigned int */
+/* xkb_context_num_include_paths(struct xkb_context *context); */
 
 /**
  * Get a specific include path from the context's include path.
@@ -585,8 +595,9 @@ xkb_context_num_include_paths(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-const char *
-xkb_context_include_path_get(struct xkb_context *context, unsigned int index);
+/* commented out by skb */
+/* const char * */
+/* xkb_context_include_path_get(struct xkb_context *context, unsigned int index); */
 
 /** @} */
 
@@ -619,17 +630,19 @@ enum xkb_log_level {
  *
  * @memberof xkb_context
  */
-void
-xkb_context_set_log_level(struct xkb_context *context,
-			  enum xkb_log_level level);
+/* commented out by skb */
+/* void */
+/* xkb_context_set_log_level(struct xkb_context *context, */
+/*			  enum xkb_log_level level); */
 
 /**
  * Get the current logging level.
  *
  * @memberof xkb_context
  */
-enum xkb_log_level
-xkb_context_get_log_level(struct xkb_context *context);
+/* commented out by skb */
+/* enum xkb_log_level */
+/* xkb_context_get_log_level(struct xkb_context *context); */
 
 /**
  * Sets the current logging verbosity.
@@ -650,16 +663,18 @@ xkb_context_get_log_level(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-void
-xkb_context_set_log_verbosity(struct xkb_context *context, int verbosity);
+/* commented out by skb */
+/* void */
+/* xkb_context_set_log_verbosity(struct xkb_context *context, int verbosity); */
 
 /**
  * Get the current logging verbosity of the context.
  *
  * @memberof xkb_context
  */
-int
-xkb_context_get_log_verbosity(struct xkb_context *context);
+/* commented out by skb */
+/* int */
+/* xkb_context_get_log_verbosity(struct xkb_context *context); */
 
 /**
  * Set a custom function to handle logging messages.
@@ -681,11 +696,12 @@ xkb_context_get_log_verbosity(struct xkb_context *context);
  *
  * @memberof xkb_context
  */
-void
-xkb_context_set_log_fn(struct xkb_context *context,
-		       void (*log_fn)(struct xkb_context *context,
-				      enum xkb_log_level level,
-				      const char *format, va_list args));
+/* commented out by skb */
+/* void */
+/* xkb_context_set_log_fn(struct xkb_context *context, */
+/*		       void (*log_fn)(struct xkb_context *context, */
+/*				      enum xkb_log_level level, */
+/*				      const char *format, va_list args)); */
 
 /** @} */
 
@@ -718,10 +734,11 @@ enum xkb_keymap_compile_flags {
  * @sa xkb_rule_names
  * @memberof xkb_keymap
  */
-struct xkb_keymap *
-xkb_keymap_new_from_names(struct xkb_context *context,
-			  const struct xkb_rule_names *names,
-			  enum xkb_keymap_compile_flags flags);
+/* struct xkb_keymap * */
+/* commented out by skb */
+/* xkb_keymap_new_from_names(struct xkb_context *context, */
+/*			  const struct xkb_rule_names *names, */
+/*			  enum xkb_keymap_compile_flags flags); */
 
 /** The possible keymap formats. */
 enum xkb_keymap_format {
@@ -747,10 +764,11 @@ enum xkb_keymap_format {
  *
  * @memberof xkb_keymap
  */
-struct xkb_keymap *
-xkb_keymap_new_from_file(struct xkb_context *context, FILE *file,
-			 enum xkb_keymap_format format,
-			 enum xkb_keymap_compile_flags flags);
+/* struct xkb_keymap * */
+/* commented out by skb */
+/* xkb_keymap_new_from_file(struct xkb_context *context, FILE *file, */
+/*			 enum xkb_keymap_format format, */
+/*			 enum xkb_keymap_compile_flags flags); */
 
 /**
  * Create a keymap from a keymap string.
@@ -776,10 +794,11 @@ xkb_keymap_new_from_string(struct xkb_context *context, const char *string,
  * @memberof xkb_keymap
  * @since 0.3.0
  */
-struct xkb_keymap *
-xkb_keymap_new_from_buffer(struct xkb_context *context, const char *buffer,
-			   size_t length, enum xkb_keymap_format format,
-			   enum xkb_keymap_compile_flags flags);
+/* struct xkb_keymap * */
+/* commented out by skb */
+/* xkb_keymap_new_from_buffer(struct xkb_context *context, const char *buffer, */
+/*			   size_t length, enum xkb_keymap_format format, */
+/*			   enum xkb_keymap_compile_flags flags); */
 
 /**
  * Take a new reference on a keymap.
@@ -788,8 +807,9 @@ xkb_keymap_new_from_buffer(struct xkb_context *context, const char *buffer,
  *
  * @memberof xkb_keymap
  */
-struct xkb_keymap *
-xkb_keymap_ref(struct xkb_keymap *keymap);
+/* struct xkb_keymap * */
+/* commented out by skb */
+/* xkb_keymap_ref(struct xkb_keymap *keymap); */
 
 /**
  * Release a reference on a keymap, and possibly free it.
@@ -798,8 +818,9 @@ xkb_keymap_ref(struct xkb_keymap *keymap);
  *
  * @memberof xkb_keymap
  */
-void
-xkb_keymap_unref(struct xkb_keymap *keymap);
+/* void */
+/* commented out by skb */
+/* xkb_keymap_unref(struct xkb_keymap *keymap); */
 
 /**
  * Get the keymap as a string in the format from which it was created.
@@ -825,9 +846,10 @@ xkb_keymap_unref(struct xkb_keymap *keymap);
  *
  * @memberof xkb_keymap
  */
-char *
-xkb_keymap_get_as_string(struct xkb_keymap *keymap,
-			 enum xkb_keymap_format format);
+/* commented out by skb */
+/* char * */
+/* xkb_keymap_get_as_string(struct xkb_keymap *keymap, */
+/*			 enum xkb_keymap_format format); */
 
 /** @} */
 
@@ -865,9 +887,10 @@ xkb_keymap_max_keycode(struct xkb_keymap *keymap);
  * @memberof xkb_keymap
  * @since 0.3.1
  */
-typedef void
-(*xkb_keymap_key_iter_t)(struct xkb_keymap *keymap, xkb_keycode_t key,
-			 void *data);
+/* typedef void */
+/* commented out by skb */
+/* (*xkb_keymap_key_iter_t)(struct xkb_keymap *keymap, xkb_keycode_t key, */
+/*			 void *data); */
 
 /**
  * Run a specified function for every valid keycode in the keymap.  If a
@@ -878,9 +901,10 @@ typedef void
  * @memberof xkb_keymap
  * @since 0.3.1
  */
-void
-xkb_keymap_key_for_each(struct xkb_keymap *keymap, xkb_keymap_key_iter_t iter,
-			void *data);
+/* void */
+/* commented out by skb */
+/* xkb_keymap_key_for_each(struct xkb_keymap *keymap, xkb_keymap_key_iter_t iter, */
+/*			void *data); */
 
 /**
  * Find the name of the key with the given keycode.
@@ -951,8 +975,9 @@ xkb_keymap_mod_get_index(struct xkb_keymap *keymap, const char *name);
  * @sa xkb_layout_index_t xkb_rule_names xkb_keymap_num_layouts_for_key()
  * @memberof xkb_keymap
  */
-xkb_layout_index_t
-xkb_keymap_num_layouts(struct xkb_keymap *keymap);
+/* xkb_layout_index_t */
+/* commented out by skb */
+/* xkb_keymap_num_layouts(struct xkb_keymap *keymap); */
 
 /**
  * Get the name of a layout by index.
@@ -963,8 +988,9 @@ xkb_keymap_num_layouts(struct xkb_keymap *keymap);
  * @sa xkb_layout_index_t
  * @memberof xkb_keymap
  */
-const char *
-xkb_keymap_layout_get_name(struct xkb_keymap *keymap, xkb_layout_index_t idx);
+/* const char * */
+/* commented out by skb */
+/* xkb_keymap_layout_get_name(struct xkb_keymap *keymap, xkb_layout_index_t idx); */
 
 /**
  * Get the index of a layout by name.
@@ -975,8 +1001,9 @@ xkb_keymap_layout_get_name(struct xkb_keymap *keymap, xkb_layout_index_t idx);
  *
  * @memberof xkb_keymap
  */
-xkb_layout_index_t
-xkb_keymap_layout_get_index(struct xkb_keymap *keymap, const char *name);
+/* xkb_layout_index_t */
+/* commented out by skb */
+/* xkb_keymap_layout_get_index(struct xkb_keymap *keymap, const char *name); */
 
 /**
  * Get the number of LEDs in the keymap.
@@ -989,8 +1016,8 @@ xkb_keymap_layout_get_index(struct xkb_keymap *keymap, const char *name);
  * @sa xkb_led_index_t
  * @memberof xkb_keymap
  */
-xkb_led_index_t
-xkb_keymap_num_leds(struct xkb_keymap *keymap);
+/* xkb_led_index_t */
+/* xkb_keymap_num_leds(struct xkb_keymap *keymap); */
 
 /**
  * Get the name of a LED by index.
@@ -999,8 +1026,8 @@ xkb_keymap_num_leds(struct xkb_keymap *keymap);
  *
  * @memberof xkb_keymap
  */
-const char *
-xkb_keymap_led_get_name(struct xkb_keymap *keymap, xkb_led_index_t idx);
+/* const char * */
+/* xkb_keymap_led_get_name(struct xkb_keymap *keymap, xkb_led_index_t idx); */
 
 /**
  * Get the index of a LED by name.
@@ -1010,8 +1037,8 @@ xkb_keymap_led_get_name(struct xkb_keymap *keymap, xkb_led_index_t idx);
  *
  * @memberof xkb_keymap
  */
-xkb_led_index_t
-xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name);
+/* xkb_led_index_t */
+/* xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name); */
 
 /**
  * Get the number of layouts for a specific key.
@@ -1023,8 +1050,8 @@ xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name);
  * @sa xkb_layout_index_t
  * @memberof xkb_keymap
  */
-xkb_layout_index_t
-xkb_keymap_num_layouts_for_key(struct xkb_keymap *keymap, xkb_keycode_t key);
+/* xkb_layout_index_t */
+/* xkb_keymap_num_layouts_for_key(struct xkb_keymap *keymap, xkb_keycode_t key); */
 
 /**
  * Get the number of shift levels for a specific key and layout.
@@ -1036,9 +1063,9 @@ xkb_keymap_num_layouts_for_key(struct xkb_keymap *keymap, xkb_keycode_t key);
  * @sa xkb_level_index_t
  * @memberof xkb_keymap
  */
-xkb_level_index_t
-xkb_keymap_num_levels_for_key(struct xkb_keymap *keymap, xkb_keycode_t key,
-			      xkb_layout_index_t layout);
+/* xkb_level_index_t */
+/* xkb_keymap_num_levels_for_key(struct xkb_keymap *keymap, xkb_keycode_t key, */
+/*			      xkb_layout_index_t layout); */
 
 /**
  * Get the keysyms obtained from pressing a key in a given layout and
@@ -1068,12 +1095,12 @@ xkb_keymap_num_levels_for_key(struct xkb_keymap *keymap, xkb_keycode_t key,
  * @sa xkb_state_key_get_syms()
  * @memberof xkb_keymap
  */
-int
-xkb_keymap_key_get_syms_by_level(struct xkb_keymap *keymap,
-				 xkb_keycode_t key,
-				 xkb_layout_index_t layout,
-				 xkb_level_index_t level,
-				 const xkb_keysym_t **syms_out);
+/* int */
+/* xkb_keymap_key_get_syms_by_level(struct xkb_keymap *keymap, */
+/*				 xkb_keycode_t key, */
+/*				 xkb_layout_index_t layout, */
+/*				 xkb_level_index_t level, */
+/*				 const xkb_keysym_t **syms_out); */
 
 /**
  * Determine whether a key should repeat or not.
@@ -1121,8 +1148,8 @@ xkb_state_new(struct xkb_keymap *keymap);
  *
  * @memberof xkb_state
  */
-struct xkb_state *
-xkb_state_ref(struct xkb_state *state);
+/* struct xkb_state * */
+/* xkb_state_ref(struct xkb_state *state); */
 
 /**
  * Release a reference on a keybaord state object, and possibly free it.
@@ -1146,8 +1173,8 @@ xkb_state_unref(struct xkb_state *state);
  *
  * @memberof xkb_state
  */
-struct xkb_keymap *
-xkb_state_get_keymap(struct xkb_state *state);
+/* struct xkb_keymap * */
+/* xkb_state_get_keymap(struct xkb_state *state); */
 
 /** Specifies the direction of the key (press / release). */
 enum xkb_key_direction {
@@ -1316,9 +1343,9 @@ xkb_state_key_get_syms(struct xkb_state *state, xkb_keycode_t key,
  * @memberof xkb_state
  * @since 0.4.1
  */
-int
-xkb_state_key_get_utf8(struct xkb_state *state, xkb_keycode_t key,
-		       char *buffer, size_t size);
+/* int */
+/* xkb_state_key_get_utf8(struct xkb_state *state, xkb_keycode_t key, */
+/*		       char *buffer, size_t size); */
 
 /**
  * Get the Unicode/UTF-32 codepoint obtained from pressing a particular
@@ -1370,8 +1397,8 @@ xkb_state_key_get_one_sym(struct xkb_state *state, xkb_keycode_t key);
  *
  * @memberof xkb_state
  */
-xkb_layout_index_t
-xkb_state_key_get_layout(struct xkb_state *state, xkb_keycode_t key);
+/* xkb_layout_index_t */
+/* xkb_state_key_get_layout(struct xkb_state *state, xkb_keycode_t key); */
 
 /**
  * Get the effective shift level for a key in a given keyboard state and
@@ -1455,9 +1482,9 @@ xkb_state_serialize_mods(struct xkb_state *state,
  *
  * @memberof xkb_state
  */
-xkb_layout_index_t
-xkb_state_serialize_layout(struct xkb_state *state,
-			   enum xkb_state_component components);
+/* xkb_layout_index_t */
+/* xkb_state_serialize_layout(struct xkb_state *state, */
+/*			   enum xkb_state_component components); */
 
 /**
  * Test whether a modifier is active in a given keyboard state by name.
@@ -1488,11 +1515,11 @@ xkb_state_mod_name_is_active(struct xkb_state *state, const char *name,
  *
  * @memberof xkb_state
  */
-int
-xkb_state_mod_names_are_active(struct xkb_state *state,
-			       enum xkb_state_component type,
-			       enum xkb_state_match match,
-			       ...);
+/* int */
+/* xkb_state_mod_names_are_active(struct xkb_state *state, */
+/*			       enum xkb_state_component type, */
+/*			       enum xkb_state_match match, */
+/*			       ...); */
 
 /**
  * Test whether a modifier is active in a given keyboard state by index.
@@ -1523,11 +1550,11 @@ xkb_state_mod_index_is_active(struct xkb_state *state, xkb_mod_index_t idx,
  *
  * @memberof xkb_state
  */
-int
-xkb_state_mod_indices_are_active(struct xkb_state *state,
-				 enum xkb_state_component type,
-				 enum xkb_state_match match,
-				 ...);
+/* int */
+/* xkb_state_mod_indices_are_active(struct xkb_state *state, */
+/*				 enum xkb_state_component type, */
+/*				 enum xkb_state_match match, */
+/*				 ...); */
 
 /**
  * @page consumed-modifiers Consumed Modifiers
@@ -1601,9 +1628,9 @@ xkb_state_mod_indices_are_active(struct xkb_state *state,
  * @sa xkb_state_key_get_consumed_mods()
  * @memberof xkb_state
  */
-int
-xkb_state_mod_index_is_consumed(struct xkb_state *state, xkb_keycode_t key,
-				xkb_mod_index_t idx);
+/* int */
+/* xkb_state_mod_index_is_consumed(struct xkb_state *state, xkb_keycode_t key, */
+/*				xkb_mod_index_t idx); */
 
 /**
  * Remove consumed modifiers from a modifier mask for a key.
@@ -1614,9 +1641,9 @@ xkb_state_mod_index_is_consumed(struct xkb_state *state, xkb_keycode_t key,
  * @sa xkb_state_mod_index_is_consumed()
  * @memberof xkb_state
  */
-xkb_mod_mask_t
-xkb_state_mod_mask_remove_consumed(struct xkb_state *state, xkb_keycode_t key,
-				   xkb_mod_mask_t mask);
+/* xkb_mod_mask_t */
+/* xkb_state_mod_mask_remove_consumed(struct xkb_state *state, xkb_keycode_t key, */
+/*				   xkb_mod_mask_t mask); */
 
 /**
  * Get the mask of modifiers consumed by translating a given key.
@@ -1627,8 +1654,8 @@ xkb_state_mod_mask_remove_consumed(struct xkb_state *state, xkb_keycode_t key,
  * @memberof xkb_state
  * @since 0.4.1
  */
-xkb_mod_mask_t
-xkb_state_key_get_consumed_mods(struct xkb_state *state, xkb_keycode_t key);
+/* xkb_mod_mask_t */
+/* xkb_state_key_get_consumed_mods(struct xkb_state *state, xkb_keycode_t key); */
 
 /**
  * Test whether a layout is active in a given keyboard state by name.
@@ -1642,9 +1669,9 @@ xkb_state_key_get_consumed_mods(struct xkb_state *state, xkb_keycode_t key);
  * @sa xkb_layout_index_t
  * @memberof xkb_state
  */
-int
-xkb_state_layout_name_is_active(struct xkb_state *state, const char *name,
-				enum xkb_state_component type);
+/* int */
+/* xkb_state_layout_name_is_active(struct xkb_state *state, const char *name, */
+/*				enum xkb_state_component type); */
 
 /**
  * Test whether a layout is active in a given keyboard state by index.
@@ -1655,10 +1682,10 @@ xkb_state_layout_name_is_active(struct xkb_state *state, const char *name,
  * @sa xkb_layout_index_t
  * @memberof xkb_state
  */
-int
-xkb_state_layout_index_is_active(struct xkb_state *state,
-				 xkb_layout_index_t idx,
-				 enum xkb_state_component type);
+/* int */
+/* xkb_state_layout_index_is_active(struct xkb_state *state, */
+/*				 xkb_layout_index_t idx, */
+/*				 enum xkb_state_component type); */
 
 /**
  * Test whether a LED is active in a given keyboard state by name.
@@ -1669,8 +1696,8 @@ xkb_state_layout_index_is_active(struct xkb_state *state,
  * @sa xkb_led_index_t
  * @memberof xkb_state
  */
-int
-xkb_state_led_name_is_active(struct xkb_state *state, const char *name);
+/* int */
+/* xkb_state_led_name_is_active(struct xkb_state *state, const char *name); */
 
 /**
  * Test whether a LED is active in a given keyboard state by index.
@@ -1681,13 +1708,13 @@ xkb_state_led_name_is_active(struct xkb_state *state, const char *name);
  * @sa xkb_led_index_t
  * @memberof xkb_state
  */
-int
-xkb_state_led_index_is_active(struct xkb_state *state, xkb_led_index_t idx);
+/* int */
+/* xkb_state_led_index_is_active(struct xkb_state *state, xkb_led_index_t idx); */
 
 /** @} */
 
 /* Leave this include last, so it can pick up our types, etc. */
-#include <xkbcommon/xkbcommon-compat.h>
+/* #include <xkbcommon/xkbcommon-compat.h> */
 
 #ifdef __cplusplus
 } /* extern "C" */
