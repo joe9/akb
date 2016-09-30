@@ -1,3 +1,6 @@
 [submodule "src/xproto"]
-	path = src/xproto
-	url = git://anongit.freedesktop.org/xorg/proto/xproto
+        path = src/xproto
+        url = git://anongit.freedesktop.org/xorg/proto/xproto
+[submodule "src/libxkbcommon"]
+        path = src/libxkbcommon
+        url = git@github.com:xkbcommon/libxkbcommon.git
