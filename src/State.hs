@@ -1,21 +1,4 @@
-module State
-  ( State(..)
-  , Group(..)
-  , GroupOnOverflow(..)
-  , KeySymbol(..)
-  , Modifier(..)
-  , ModifierMap(..)
-  , group
-  , groups
-  , keyCodeAndGroupsToKeymap
-  , onKey
-  , updateModifiers
-  , shiftIsLevelTwo
-  , KeyCode
-  , Level
-  , onKeyCode
-  , stickyUpdateModifiers
-  ) where
+module State where
 
 import           Data.Bits
 import           Data.Default
@@ -23,6 +6,7 @@ import           Data.Maybe
 import          qualified Data.List.NonEmpty as NonEmpty
 import Foreign.C.Types
 import Data.Word
+import Data.Either
 import qualified Data.Vector  as V
 --
 import KeySymbolDefinitions
@@ -132,6 +116,14 @@ onKeyCode keycode state =
      >>= lookupFromGroup (sLevel state state)
      >>= stateChangeOnKey state)
 
+updateOnKeyCode :: KeyCode -> KeyDirection -> State -> (Maybe KeySymbol, State)
+updateOnKeyCode keycode direction state =
+  fromMaybe
+    (Nothing, state)
+    ((sKeymap state) V.!? (fromIntegral keycode)
+     >>= lookupFromGroup (sLevel state state)
+     >>= stateChangeOnKey state)
+
 -- TODO level might modify state if it cosumes Shift modifier
 shiftIsLevelTwo :: State -> Level
 shiftIsLevelTwo s
@@ -180,3 +172,46 @@ keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
 
+-- same as xkb_key_direction
+data KeyDirection = Up | Down deriving (Enum)
+
+-- same as xkb_state_component
+type StateComponent = Word8
+
+data StateComponentBit =
+--     /** Depressed modifiers, i.e. a key is physically holding them. */
+    ModifiersDepressed -- (1 << 0)
+--     /** Latched modifiers, i.e. will be unset after the next non-modifier
+--      *  key press. */
+    | ModifiersLatched -- (1 << 1)
+--     /** Locked modifiers, i.e. will be unset after the key provoking the
+--      *  lock has been pressed again. */
+    | ModifiersLocked -- (1 << 2)
+--     /** Effective modifiers, i.e. currently active and affect key
+--      *  processing (derived from the other state components).
+--      *  Use this unless you explictly care how the state came about. */
+    | ModifiersEffective -- (1 << 3)
+--     /** Depressed layout, i.e. a key is physically holding it. */
+    | LayoutDepressed -- (1 << 4)
+--     /** Latched layout, i.e. will be unset after the next non-modifier
+--      *  key press. */
+    | LayoutLatched -- (1 << 5)
+--     /** Locked layout, i.e. will be unset after the key provoking the lock
+--      *  has been pressed again. */
+    | LayoutLocked -- (1 << 6)
+--     /** Effective layout, i.e. currently active and affects key processing
+--      *  (derived from the other state components).
+--      *  Use this unless you explictly care how the state came about. */
+    | LayoutEffective -- (1 << 7)
+--     /** LEDs (derived from the other state components). */
+    | Leds -- (1 << 8)
+    deriving (Enum)
+
+-- What does Layout mean in the above data type?
+stateToStateComponent :: State -> StateComponent
+stateToStateComponent _ = setBit 0 (fromEnum LayoutEffective)
+
+doesKeyRepeat :: KeyCode -> State -> Bool
+doesKeyRepeat state keycode = undefined
+--   maybe False isRight
+--     ((sKeymap state) V.!? (fromIntegral keycode) >>= sOnKey state)

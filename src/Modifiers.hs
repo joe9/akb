@@ -3,15 +3,11 @@
 module Modifiers
   ( Modifiers
   , Modifier(..)
-  , toBitMask
-  , fromBitMask
-  , isInBitMask
   , setModifier
   , clearModifier
   , testModifier
   ) where
 
-import Control.Monad
 import Data.Bits
 import Data.Word
 --

@@ -5,6 +5,7 @@ module Keymap.CustomDvorak
     ) where
 
 import State
+import Modifiers
 import qualified Data.Vector as V
 import Data.Default
 --

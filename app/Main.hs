@@ -8,6 +8,9 @@ import qualified Data.Text.IO as TIO
 --
 import Skb
 import Modifiers
+import State
+import KeySymbolDefinitions
+import BitMask
 
 main :: IO ()
 main = do
