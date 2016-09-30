@@ -48,7 +48,7 @@ skb_state_key_get_one_sym ptr keycode = do
        let (keySym, updatedState) = onKeyCode keycode state
        in case keySym of
             Just k -> (unKeySymbol k, updatedState)
-            Nothing -> (unKeySymbol XK_NoSymbol, updatedState))
+            Nothing -> (unKeySymbol XKB_KEY_NoSymbol, updatedState))
 
 withState :: StablePtr StateIORef -> (State -> (a, State)) -> IO a
 withState ptr f = do

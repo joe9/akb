@@ -138,8 +138,8 @@ lookupFromGroup i (Group v) = v V.!? i
 lookupFromGroup _ _         = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
-onKey XK_Control_L =
-  Left (ModifierMap XK_Control_L Control (updateModifiers XK_Control_L Control))
+onKey XKB_KEY_Control_L =
+  Left (ModifierMap XKB_KEY_Control_L Control (updateModifiers XKB_KEY_Control_L Control))
 onKey k = Right k
 
 stickyUpdateModifiers :: KeySymbol -> Modifier -> State -> State

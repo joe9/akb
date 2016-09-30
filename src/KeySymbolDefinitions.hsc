@@ -14,6 +14,9 @@ newtype KeySymbol = MkKeySymbol { unKeySymbol :: Word32 } deriving (Eq, Show)
 -- need to convert the Text to String to use the below
 -- instance show KeySymbol where show = showKeySymbol
 
+noKeySymbol :: KeySymbol
+noKeySymbol = MkKeySymbol 0
+
 -- https://www.schoolofhaskell.com/user/icelandj/Pattern%20synonyms
 
 -- generated using the below commands:
