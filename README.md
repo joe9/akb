@@ -11,9 +11,11 @@ src/Bindings/Xkbcomon.hsc files is generated using:
 ## Installation
 
 Build Instructions:
+
 1.   Use make instead of "stack build" as make generates the custom libskb.so
 
 Install instructions:
+
 1. Install libxkbcommon
 2. Install skb
 3. cd <include directory>/libxkbcommon, ln -sf skb.h libxkbcommon.h
