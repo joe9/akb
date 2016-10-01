@@ -2,12 +2,13 @@ module State where
 
 import           Data.Bits
 import           Data.Default
+import           Data.Either
+import qualified Data.List.NonEmpty as NonEmpty
 import           Data.Maybe
-import          qualified Data.List.NonEmpty as NonEmpty
-import Foreign.C.Types
-import Data.Word
-import Data.Either
-import qualified Data.Vector  as V
+import qualified Data.Vector        as V
+import           Data.Word
+import           Foreign.C.Types
+
 --
 import KeySymbolDefinitions
 import Modifiers
@@ -18,18 +19,18 @@ data GroupOnOverflow
 
 data Group
   = Group (V.Vector KeySymbol)
-  | Groups Int
-           GroupOnOverflow
-           (V.Vector Group) -- Int for the index of the current active group
+  | Groups GroupOnOverflow
+           (V.Vector Group)
 
 data ModifierMap = ModifierMap
-  { mKeySymbol :: KeySymbol
-  , mModifier  :: Modifier
-  , mAction    :: (State -> State)
+  { mKeySymbol    :: KeySymbol
+  , mModifier     :: Modifier
+  , mWhenPressed  :: State -> State
+  , mWhenReleased :: State -> State
   }
 
 instance Eq ModifierMap where
-  (ModifierMap k t _) == (ModifierMap k1 t1 _) = (k == k1) && (t == t1)
+  (ModifierMap k t _ _) == (ModifierMap k1 t1 _ _) = (k == k1) && (t == t1)
 
 type KeyCode = Word32
 
@@ -91,81 +92,243 @@ type Level = Int
 -- <joe9> geekosaur: I agree. the IORef idea is a lot better. just want to get my head
 --        around the intricacies.  [15:36]
 -- <geekosaur> it does become complex when you're driving it from the C end :/
-
--- TODO group is a state level attribute, not a key level attribute
 -- TODO could change this to an unboxed vector for performance
 data State = State
-  { sKeymap             :: V.Vector Group
-  , sOnKey              :: KeySymbol -> Either ModifierMap KeySymbol
-  , sLevel              :: State -> Level -- TODO State -> (Level,State)
-  , sGroupNumber        :: State -> (Int, State)
+  { sKeymap :: V.Vector Group
+  , sOnKey :: KeySymbol -> Either ModifierMap KeySymbol
+  , sCalculateLevel :: Modifiers -> Level -- if there is a level change
+    -- if there is a level change
+    -- that changes state, for example,
+    -- consuming the shift modifier
+  , sConsumeModifiersUsedForCalculatingLevel :: State -> State
+    --  effective group = f(locked group + latched group + base group)
+    --  f = sNormalizeGroup
+    -- The function f ensures that the effective group
+    -- is within range. The precise function is specified for the
+    -- keyboard and can be retrieved through the keyboard
+    -- description. It may wrap around, clamp down, or default. Few
+    -- applications will actually examine the effective group, and far
+    -- fewer still will examine the locked, latched, and base groups.
+  , sNormalizeGroup :: Int -> Int
+    -- effective is used for lookups
+  , sEffectiveGroup :: !Int -- group index is mostly 0 -- (first group)
+  , sDepressedGroup :: !Int -- keys that are physically or logically down
+  , sLatchedGroup :: !Int
+  , sLockedGroup :: !Int
+    -- lookup & effective = modifiers used for lookup
+    --   , sLookupModifiers :: !Modifiers
+    -- The effective modifiers are the bitwise union of the
+    --   locked, latched, and the base modifiers.
+    -- effective is used for lookups
   , sEffectiveModifiers :: !Modifiers
-  , sLatchedModifiers   :: !Modifiers
-  , sLockedModifiers    :: !Modifiers
+  , sDepressedModifiers :: !Modifiers -- modifiers that are physically or logically down
+  , sLatchedModifiers :: !Modifiers
+  , sLockedModifiers :: !Modifiers
   }
 
-instance Default State where def = State V.empty onKey shiftIsLevelTwo (\s -> (0, s)) 0 0 0
+instance Default State where
+  def =
+    State
+      V.empty
+      onKey
+      shiftIsLevelTwoCalculateLevel
+      shiftIsLevelTwoConsumeModifiers
+      id
+      0
+      0
+      0
+      0
+      0
+      0
+      0
+      0
+
+identifyStateChanges :: State -> State -> UpdatedStateComponents
+identifyStateChanges old new =
+  (updateStateComponentBit
+     (sDepressedGroup old == sDepressedGroup new)
+     GroupDepressed .
+   updateStateComponentBit
+     (sDepressedModifiers old == sDepressedModifiers new)
+     ModifiersDepressed .
+   updateStateComponentBit (sLatchedGroup old == sLatchedGroup new) GroupLatched .
+   updateStateComponentBit
+     (sLatchedModifiers old == sLatchedModifiers new)
+     ModifiersLatched .
+   updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked .
+   updateStateComponentBit
+     (sLockedModifiers old == sLockedModifiers new)
+     ModifiersLocked .
+   updateStateComponentBit
+     (sEffectiveGroup old == sEffectiveGroup new)
+     GroupEffective .
+   updateStateComponentBit
+     (sEffectiveModifiers old == sEffectiveModifiers new)
+     ModifiersEffective)
+    0
+
+updateStateComponentBit :: Bool
+                        -> StateComponentBit
+                        -> UpdatedStateComponents
+                        -> UpdatedStateComponents
+updateStateComponentBit True i sc  = clearBit sc (fromEnum i)
+updateStateComponentBit False i sc = setBit sc (fromEnum i)
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
-onKeyCode :: KeyCode -> State -> (Maybe KeySymbol, State)
-onKeyCode keycode state =
-  fromMaybe
-    (Nothing, state)
-    ((sKeymap state) V.!? (fromIntegral keycode)
-     >>= lookupFromGroup (sLevel state state)
-     >>= stateChangeOnKey state)
+onKeyCode :: KeyCode -> State -> (KeySymbol, UpdatedStateComponents, State)
+onKeyCode = onKeyCodePress
 
-updateOnKeyCode :: KeyCode -> KeyDirection -> State -> (Maybe KeySymbol, State)
-updateOnKeyCode keycode direction state =
-  fromMaybe
-    (Nothing, state)
-    ((sKeymap state) V.!? (fromIntegral keycode)
-     >>= lookupFromGroup (sLevel state state)
-     >>= stateChangeOnKey state)
-
--- TODO level might modify state if it cosumes Shift modifier
-shiftIsLevelTwo :: State -> Level
-shiftIsLevelTwo s
-  | testModifier allCurrentModifiers Shift = 1 -- zero indexed
-  | otherwise = 0 -- zero indexed
+onKeyCodePress :: KeyCode -> State -> (KeySymbol, UpdatedStateComponents, State)
+onKeyCodePress keycode state =
+  ((\(k, s) -> (k, identifyStateChanges state s, s)) . f keycode)
+    (updateEffectives state)
   where
-    allCurrentModifiers =
-      sEffectiveModifiers s .|. sLatchedModifiers s .|. sLockedModifiers s
+    f k s = onKeyCodeEvent stateChangeOnKeyPress (XKB_KEY_NoSymbol, s) k s
 
-lookupFromGroup :: Int -> Group -> Maybe KeySymbol
-lookupFromGroup i (Group v) = v V.!? i
-lookupFromGroup _ _         = Nothing
+onKeyCodeRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
+onKeyCodeRelease keycode state =
+  ((\s -> (identifyStateChanges state s, s)) . f keycode)
+    (updateEffectives state)
+  where
+    f k s = onKeyCodeEvent stateChangeOnKeyRelease s k s
+
+onKeyCodeEvent :: (State -> KeySymbol -> a) -> a -> KeyCode -> State -> a
+onKeyCodeEvent f defaultValue keycode state =
+  fromMaybe
+    defaultValue
+    ((sKeymap state) V.!? (fromIntegral keycode) >>=
+     -- The lookup group is the same as the effective group
+     lookupGroup (sEffectiveGroup state) >>=
+     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)) >>=
+     return . f state)
+
+calculateLevel :: State -> Level
+calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
+
+shiftIsLevelTwoCalculateLevel :: Modifiers -> Level
+shiftIsLevelTwoCalculateLevel effectiveModifiers
+  | testModifier effectiveModifiers Shift = 1 -- zero indexed
+  | otherwise = 0 -- zero indexed
+
+shiftIsLevelTwoConsumeModifiers :: State -> State
+shiftIsLevelTwoConsumeModifiers state = undefined
+
+-- nested groups are not allowed
+lookupGroup :: Int -> Group -> Maybe Group
+lookupGroup _ group@(Group _) = Just group
+lookupGroup rawGroupIndex (Groups wrapType groups) =
+  case groups V.!? groupIndex of
+    jg@(Just g) -> jg
+    (Nothing) ->
+      case wrapType of
+        Clamp -> Just (V.last groups)
+        Wrap -> groups V.!? (mod (V.length groups) (groupIndex + 1))
+  where
+    groupIndex =
+      if rawGroupIndex < 0
+        then 0
+        else rawGroupIndex
+
+-- keySymbolsVectorFromGroup :: Group -> Maybe (V.Vector KeySymbol)
+-- keySymbolsVectorFromGroup (Group ks) = Just ks
+-- keySymbolsVectorFromGroup _  = Nothing
+lookupFromGroup :: Level -> Group -> Maybe KeySymbol
+lookupFromGroup level (Group v) =
+  case v V.!? level of
+    jk@(Just ks) -> jk
+    Nothing      -> v V.!? 0 -- if there is only 1 level
+lookupFromGroup _ _ = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
 onKey XKB_KEY_Control_L =
-  Left (ModifierMap XKB_KEY_Control_L Control (updateModifiers XKB_KEY_Control_L Control))
+  Left
+    (ModifierMap
+       XKB_KEY_Control_L
+       Control
+       (pressModifier XKB_KEY_Control_L Control)
+       (releaseModifier XKB_KEY_Control_L Control))
 onKey k = Right k
 
-stickyUpdateModifiers :: KeySymbol -> Modifier -> State -> State
-stickyUpdateModifiers _ m state
-  | testModifier (sLockedModifiers state) m =
-    state {sLockedModifiers = setModifier (sLockedModifiers state) m}
-  | testModifier (sEffectiveModifiers state) m =
-    state {sLatchedModifiers = setModifier (sLatchedModifiers state) m}
+clearStickyPresses :: State -> State
+clearStickyPresses state = state {sLockedModifiers = 0, sLatchedModifiers = 0}
+
+stickyPressModifier :: KeySymbol -> Modifier -> State -> State
+stickyPressModifier _ m state
+  | testModifier (sLockedModifiers state) m
+   -- if the key is already locked, do not need to do anything
+   -- but better to ensure that Depressed has it
+   = state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
+  | testModifier (sLatchedModifiers state) m
+   -- if the key was previously latched, lock it and remove the latch
+   -- but better to ensure that Depressed has it
+   =
+    state
+    { sLockedModifiers = setModifier (sLockedModifiers state) m
+    , sLatchedModifiers = clearModifier (sLatchedModifiers state) m
+    , sDepressedModifiers = setModifier (sDepressedModifiers state) m
+    }
+  -- ensure that Depressed and Latched have it
   | otherwise =
-    state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
+    state
+    { sLatchedModifiers = setModifier (sLatchedModifiers state) m
+    , sDepressedModifiers = setModifier (sDepressedModifiers state) m
+    }
+
+pressModifier :: KeySymbol -> Modifier -> State -> State
+pressModifier _ m state =
+  state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
+
+releaseModifier :: KeySymbol -> Modifier -> State -> State
+releaseModifier _ m state =
+  state {sDepressedModifiers = clearModifier (sDepressedModifiers state) m}
 
 updateModifiers :: KeySymbol -> Modifier -> State -> State
 updateModifiers _ m state =
-  state {sEffectiveModifiers = setModifier (sEffectiveModifiers state) m}
+  state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
 
-stateChangeOnKey :: State -> KeySymbol -> Maybe (Maybe KeySymbol, State)
-stateChangeOnKey s keycode =
-  case onKey keycode of
-    (Right ks)                 -> Just (Just ks, s)
-    (Left (ModifierMap _ _ f)) -> Just (Nothing, f s)
+stateChangeOnKeyPress :: State -> KeySymbol -> (KeySymbol, State)
+stateChangeOnKeyPress s keysymbol =
+  case (sOnKey s) keysymbol of
+    (Right ks) ->
+      ( ks
+      , (updateEffectives .
+         clearStickyPresses .
+         clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
+          s)
+    (Left (ModifierMap _ _ onPressFunction _))
+    -- not consuming modifiers when a modifier is the result, bug or feature?
+     -> (keysymbol, (updateEffectives . updateDepresseds . onPressFunction) s)
+
+stateChangeOnKeyRelease :: State -> KeySymbol -> State
+stateChangeOnKeyRelease s keysymbol =
+  case (sOnKey s) keysymbol of
+    (Right ks) -> s
+    (Left (ModifierMap _ _ _ onReleaseFunction)) ->
+      ((updateEffectives . onReleaseFunction) s)
+
+clearLatches :: State -> State
+clearLatches state = state {sLatchedGroup = 0, sLatchedModifiers = 0}
+
+updateEffectives :: State -> State
+updateEffectives state =
+  state
+  { sEffectiveModifiers =
+      (sDepressedModifiers state) .|. (sLatchedModifiers state) .|.
+      (sLockedModifiers state)
+  , sEffectiveGroup =
+      (sNormalizeGroup state)
+        ((sDepressedGroup state) + (sLatchedGroup state) + (sLockedGroup state))
+  }
+
+updateDepresseds :: State -> State
+updateDepresseds state = undefined
 
 group :: [KeySymbol] -> Group
 group = Group . V.fromList
 
 groups :: [[KeySymbol]] -> Group
-groups = Groups 0 Clamp . V.fromList . fmap group
+groups = Groups Clamp . V.fromList . fmap group
 
 keyCodeAndGroupsToKeymap :: [(Int, Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
@@ -173,43 +336,46 @@ keyCodeAndGroupsToKeymap keycodes =
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
 
 -- same as xkb_key_direction
-data KeyDirection = Up | Down deriving (Enum)
+data KeyDirection
+  = Pressed -- Down
+  | Released -- Up
+  deriving (Enum)
 
 -- same as xkb_state_component
-type StateComponent = Word8
+type UpdatedStateComponents = Word8
 
-data StateComponentBit =
+data StateComponentBit
+  = ModifiersDepressed -- (1 << 0)
+  | ModifiersLatched -- (1 << 1)
+  | ModifiersLocked -- (1 << 2)
+  | ModifiersEffective -- (1 << 3)
+  | GroupDepressed -- (1 << 4)
+  | GroupLatched -- (1 << 5)
+  | GroupLocked -- (1 << 6)
+  | GroupEffective -- (1 << 7)
+  | Leds -- (1 << 8)
+  deriving (Enum)
+
 --     /** Depressed modifiers, i.e. a key is physically holding them. */
-    ModifiersDepressed -- (1 << 0)
 --     /** Latched modifiers, i.e. will be unset after the next non-modifier
 --      *  key press. */
-    | ModifiersLatched -- (1 << 1)
 --     /** Locked modifiers, i.e. will be unset after the key provoking the
 --      *  lock has been pressed again. */
-    | ModifiersLocked -- (1 << 2)
 --     /** Effective modifiers, i.e. currently active and affect key
 --      *  processing (derived from the other state components).
 --      *  Use this unless you explictly care how the state came about. */
-    | ModifiersEffective -- (1 << 3)
 --     /** Depressed layout, i.e. a key is physically holding it. */
-    | LayoutDepressed -- (1 << 4)
 --     /** Latched layout, i.e. will be unset after the next non-modifier
 --      *  key press. */
-    | LayoutLatched -- (1 << 5)
 --     /** Locked layout, i.e. will be unset after the key provoking the lock
 --      *  has been pressed again. */
-    | LayoutLocked -- (1 << 6)
 --     /** Effective layout, i.e. currently active and affects key processing
 --      *  (derived from the other state components).
 --      *  Use this unless you explictly care how the state came about. */
-    | LayoutEffective -- (1 << 7)
 --     /** LEDs (derived from the other state components). */
-    | Leds -- (1 << 8)
-    deriving (Enum)
-
 -- What does Layout mean in the above data type?
-stateToStateComponent :: State -> StateComponent
-stateToStateComponent _ = setBit 0 (fromEnum LayoutEffective)
+stateToStateComponent :: State -> UpdatedStateComponents
+stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
 
 doesKeyRepeat :: KeyCode -> State -> Bool
 doesKeyRepeat state keycode = undefined

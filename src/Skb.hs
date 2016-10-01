@@ -45,10 +45,8 @@ skb_state_key_get_one_sym ptr keycode = do
   withState
     ptr
     (\state ->
-       let (keySym, updatedState) = onKeyCode keycode state
-       in case keySym of
-            Just k -> (unKeySymbol k, updatedState)
-            Nothing -> (unKeySymbol XKB_KEY_NoSymbol, updatedState))
+       let (keySym, _, updatedState) = onKeyCode keycode state
+       in  (unKeySymbol keySym, updatedState))
 
 withState :: StablePtr StateIORef -> (State -> (a, State)) -> IO a
 withState ptr f = do
@@ -58,7 +56,7 @@ withState ptr f = do
   writeIORef stateIORef updatedState
   return a
 
-foreign export ccall  skb_state_key_get_one_sym ::
+foreign export ccall skb_state_key_get_one_sym ::
                StablePtr StateIORef -> KeyCode -> IO Word32
 
 skb_state_unref :: StablePtr StateIORef -> IO ()
@@ -82,18 +80,21 @@ type CKeyDirection = Word8
 skb_state_update_key :: StablePtr StateIORef
                      -> KeyCode
                      -> CKeyDirection
-                     -> IO ()
-skb_state_update_key ptr keycode dir = do
+                     -> IO UpdatedStateComponents
+skb_state_update_key ptr keycode 0 = do
+  withState
+    ptr
+    (\state -> onKeyCodeRelease keycode state)
+skb_state_update_key ptr keycode 1 = do
   withState
     ptr
     (\state ->
-       let direction = toEnum (fromIntegral dir)
-           (_, updatedState) = updateOnKeyCode keycode direction state
-       in ((), updatedState))
+       let (_, sc, updatedState) = onKeyCodePress keycode state
+       in (sc, updatedState))
 
 -- foreign export ccall skb_state_update_key :: StablePtr StateIORef -> KeyCode -> CKeyDirection -> IO StateComponent
 foreign export ccall  skb_state_update_key ::
-               StablePtr StateIORef -> KeyCode -> CKeyDirection -> IO ()
+               StablePtr StateIORef -> KeyCode -> CKeyDirection -> IO UpdatedStateComponents
 
 skb_state_update_mask :: StablePtr StateIORef
                       -> Word8
