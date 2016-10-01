@@ -123,7 +123,7 @@ skb_keymap_key_repeats ptr keycode = do
   withState
     ptr
     (\state ->
-       let bool = doesKeyRepeat keycode state
+       let bool = findIfKeyRepeats keycode state
        in (fromIntegral ( fromEnum bool), state))
 
 foreign export ccall  skb_keymap_key_repeats ::

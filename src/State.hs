@@ -203,6 +203,17 @@ onKeyCodeEvent f defaultValue keycode state =
      lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)) >>=
      return . f state)
 
+findIfKeyRepeats :: KeyCode -> State -> Bool
+findIfKeyRepeats keycode state =
+    onKeyCodeEvent doesKeyRepeat True keycode state
+
+doesKeyRepeat :: State -> KeySymbol -> Bool
+doesKeyRepeat s keysymbol =
+  case (sOnKey s) keysymbol of
+    (Right _) -> True
+    -- assuming all modifiers do not repeat
+    (Left _) -> False
+
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
 
@@ -296,9 +307,9 @@ stateChangeOnKeyPress s keysymbol =
          clearStickyPresses .
          clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
           s)
-    (Left (ModifierMap _ _ onPressFunction _))
+    (Left (ModifierMap _ modifier onPressFunction _))
     -- not consuming modifiers when a modifier is the result, bug or feature?
-     -> (keysymbol, (updateEffectives . updateDepresseds . onPressFunction) s)
+     -> (keysymbol, (updateEffectives . updateDepresseds modifier . onPressFunction) s)
 
 stateChangeOnKeyRelease :: State -> KeySymbol -> State
 stateChangeOnKeyRelease s keysymbol =
@@ -321,8 +332,9 @@ updateEffectives state =
         ((sDepressedGroup state) + (sLatchedGroup state) + (sLockedGroup state))
   }
 
-updateDepresseds :: State -> State
-updateDepresseds state = undefined
+updateDepresseds :: Modifier -> State -> State
+updateDepresseds modifier state =
+  state {sDepressedModifiers = setModifier (sDepressedModifiers state) modifier}
 
 group :: [KeySymbol] -> Group
 group = Group . V.fromList
@@ -376,8 +388,3 @@ data StateComponentBit
 -- What does Layout mean in the above data type?
 stateToStateComponent :: State -> UpdatedStateComponents
 stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
-
-doesKeyRepeat :: KeyCode -> State -> Bool
-doesKeyRepeat state keycode = undefined
---   maybe False isRight
---     ((sKeymap state) V.!? (fromIntegral keycode) >>= sOnKey state)
