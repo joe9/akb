@@ -342,7 +342,7 @@ data KeyDirection
   deriving (Enum)
 
 -- same as xkb_state_component
-type UpdatedStateComponents = Word8
+type UpdatedStateComponents = Word32
 
 data StateComponentBit
   = ModifiersDepressed -- (1 << 0)
