@@ -40,7 +40,7 @@ TODO: Write history
 
 ## Credits
 
-Special thanks to daniels (author of libxkbcommon) of #wayland, Cloudef of #orbment
+Special thanks to Cloudef of #orbment, daniels of #wayland
 
 ## License
 
