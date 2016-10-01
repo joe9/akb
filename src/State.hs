@@ -204,15 +204,14 @@ onKeyCodeEvent f defaultValue keycode state =
      return . f state)
 
 findIfKeyRepeats :: KeyCode -> State -> Bool
-findIfKeyRepeats keycode state =
-    onKeyCodeEvent doesKeyRepeat True keycode state
+findIfKeyRepeats keycode state = onKeyCodeEvent doesKeyRepeat True keycode state
 
 doesKeyRepeat :: State -> KeySymbol -> Bool
 doesKeyRepeat s keysymbol =
   case (sOnKey s) keysymbol of
     (Right _) -> True
     -- assuming all modifiers do not repeat
-    (Left _) -> False
+    (Left _)  -> False
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -223,7 +222,11 @@ shiftIsLevelTwoCalculateLevel effectiveModifiers
   | otherwise = 0 -- zero indexed
 
 shiftIsLevelTwoConsumeModifiers :: State -> State
-shiftIsLevelTwoConsumeModifiers state = undefined
+shiftIsLevelTwoConsumeModifiers state
+  | sCalculateLevel state (sEffectiveModifiers state) > 0 =
+    state
+    {sDepressedModifiers = clearModifier (sDepressedModifiers state) Shift}
+  | otherwise = state
 
 -- nested groups are not allowed
 lookupGroup :: Int -> Group -> Maybe Group
@@ -261,8 +264,10 @@ onKey XKB_KEY_Control_L =
        (releaseModifier XKB_KEY_Control_L Control))
 onKey k = Right k
 
+-- Pressing Esc when having any locked modifiers releases all
 clearStickyPresses :: State -> State
-clearStickyPresses state = state {sLockedModifiers = 0, sLatchedModifiers = 0}
+clearStickyPresses state =
+  state {sLockedModifiers = 0, sLatchedModifiers = 0, sDepressedModifiers = 0}
 
 stickyPressModifier :: KeySymbol -> Modifier -> State -> State
 stickyPressModifier _ m state
@@ -304,12 +309,14 @@ stateChangeOnKeyPress s keysymbol =
     (Right ks) ->
       ( ks
       , (updateEffectives .
-         clearStickyPresses .
+         clearStickyPresses . -- This is how it is working now
          clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
           s)
     (Left (ModifierMap _ modifier onPressFunction _))
     -- not consuming modifiers when a modifier is the result, bug or feature?
-     -> (keysymbol, (updateEffectives . updateDepresseds modifier . onPressFunction) s)
+     ->
+      ( keysymbol
+      , (updateEffectives . updateDepresseds modifier . onPressFunction) s)
 
 stateChangeOnKeyRelease :: State -> KeySymbol -> State
 stateChangeOnKeyRelease s keysymbol =
