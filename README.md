@@ -20,7 +20,7 @@ Install instructions:
     * cp src/libskb-xkbcommon.so $(WLD)/lib/
     * cp src/Skb_stub.h $(WLD)/include/
     * cp src/skb.h $(WLD)/include/
-3. cd <lib directory>/
+3. cd (lib directory)/
     * mv libxkbcommon.so.0.0.0 libxkbcommon.so.0.0.0.original
     * ln -sf libskb-xkbcommon.so libxkbcommon.so.0.0.0
 
