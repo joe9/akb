@@ -6,10 +6,10 @@ CC=gcc
 TMPDIR=/tmp/ghc/
 GHCVERSION=`TMPDIR=/tmp/ghc stack exec ghc -- --numeric-version`
 
-all: src/libskb.so
+all: src/libskb.so src/skb-libxkbcommon.so
 
 clean:
-	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h src/KeySymbolDefinitions.hs
+	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h src/KeySymbolDefinitions.hs src/skb-libxkbcommon.so
 
 src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 	test -d $(TMPDIR) || mkdir $(TMPDIR)
@@ -18,11 +18,24 @@ src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 	cd src && hsc2hs KeySymbolDefinitions.hsc
 	cd src && \
 		TMPDIR=$(TMPDIR) stack exec ghc -- --make \
-		-odir $(TMPDIR)/build/ \
-		-hidir $(TMPDIR)/build/ \
-		-O2 -dynamic -shared -fPIC \
-		-o libskb.so Skb.hs skb.c \
-		-l"HSrts-ghc$(GHCVERSION)"
+		    -odir $(TMPDIR)/build/ \
+		    -hidir $(TMPDIR)/build/ \
+		    -O2 -dynamic -shared -fPIC \
+		    -o libskb.so Skb.hs skb.c \
+		    -l"HSrts-ghc$(GHCVERSION)"
+
+src/skb-libxkbcommon.so: src/**/*.hs src/skb.c src/skb.h
+	test -d $(TMPDIR) || mkdir $(TMPDIR)
+	test -d $(TMPDIR)/build || mkdir $(TMPDIR)/build
+	TMPDIR=$(TMPDIR) stack build
+	cd src && hsc2hs KeySymbolDefinitions.hsc
+	cd src && \
+		TMPDIR=$(TMPDIR) stack exec ghc -- --make \
+		    -odir $(TMPDIR)/build/ \
+		    -hidir $(TMPDIR)/build/ \
+		    -O2 -dynamic -shared -fPIC \
+		    -o skb-libxkbcommon.so Xkb.hs skb.c \
+		    -l"HSrts-ghc$(GHCVERSION)"
 
 # got this idea from
 #  http://stackoverflow.com/questions/10858261/abort-makefile-if-variable-not-set
