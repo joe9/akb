@@ -100,21 +100,28 @@ skb_state_update_mask :: StablePtr StateIORef
                       -> Word8
                       -> Word8
                       -> Word8
+                      -> Word8
+                      -> Word8
+                      -> Word8
                       -> IO ()
-skb_state_update_mask ptr depressed latched locked = do
+skb_state_update_mask ptr depressedModifiers latchedModifiers lockedModifiers depressedGroup latchedGroup lockedGroup = do
   withState
     ptr
     (\state ->
        ( ()
        , state
-         { sEffectiveModifiers = fromIntegral depressed
-         , sLatchedModifiers = fromIntegral latched
-         , sLockedModifiers = fromIntegral locked
+         { sDepressedModifiers = fromIntegral depressedModifiers
+         , sLatchedModifiers = fromIntegral latchedModifiers
+         , sLockedModifiers = fromIntegral lockedModifiers
+
+         , sDepressedGroup = fromIntegral depressedGroup
+         , sLatchedGroup = fromIntegral latchedGroup
+         , sLockedGroup = fromIntegral lockedGroup
          }))
 
 -- foreign export ccall skb_state_update_key :: StablePtr StateIORef -> KeyCode -> CKeyDirection -> IO StateComponent
 foreign export ccall  skb_state_update_mask ::
-               StablePtr StateIORef -> Word8 -> Word8 -> Word8 -> IO ()
+               StablePtr StateIORef -> Word8 -> Word8 -> Word8 -> Word8 -> Word8 -> Word8 -> IO ()
 
 skb_keymap_key_repeats :: StablePtr StateIORef
                      -> KeyCode
