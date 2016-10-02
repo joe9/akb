@@ -11,6 +11,7 @@ import           Foreign.C.Types
 
 --
 import KeySymbolDefinitions
+import KeySymbolToUTF
 import Modifiers
 
 data GroupOnOverflow

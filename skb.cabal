@@ -24,6 +24,7 @@ library
                      , Modifiers
                      , BitMask
                      , KeySymbolDefinitions
+                     , KeySymbolToUTF
                      , State
                      , Keymap.CustomDvorak
   build-tools:       hsc2hs
