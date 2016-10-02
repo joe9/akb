@@ -2,16 +2,11 @@ module State where
 
 import           Data.Bits
 import           Data.Default
-import           Data.Either
-import qualified Data.List.NonEmpty as NonEmpty
-import           Data.Maybe
 import qualified Data.Vector        as V
 import           Data.Word
-import           Foreign.C.Types
 
 --
 import KeySymbolDefinitions
-import KeySymbolToUTF
 import Modifiers
 
 data GroupOnOverflow
@@ -196,23 +191,21 @@ onKeyCodeRelease keycode state =
 
 onKeyCodeEvent :: (State -> KeySymbol -> a) -> a -> KeyCode -> State -> a
 onKeyCodeEvent f defaultValue keycode state =
-  fromMaybe
-    defaultValue
-    ((sKeymap state) V.!? (fromIntegral keycode) >>=
+  maybe defaultValue (f state)
+     (sKeymap state V.!? fromIntegral keycode >>=
      -- The lookup group is the same as the effective group
      lookupGroup (sEffectiveGroup state) >>=
-     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)) >>=
-     return . f state)
+     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)))
 
 findIfKeyRepeats :: KeyCode -> State -> Bool
-findIfKeyRepeats keycode state = onKeyCodeEvent doesKeyRepeat True keycode state
+findIfKeyRepeats = onKeyCodeEvent doesKeyRepeat True
 
 doesKeyRepeat :: State -> KeySymbol -> Bool
 doesKeyRepeat s keysymbol =
-  case (sOnKey s) keysymbol of
-    (Right _) -> True
+  case sOnKey s keysymbol of
+    Right _ -> True
     -- assuming all modifiers do not repeat
-    (Left _)  -> False
+    Left _  -> False
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -231,14 +224,14 @@ shiftIsLevelTwoConsumeModifiers state
 
 -- nested groups are not allowed
 lookupGroup :: Int -> Group -> Maybe Group
-lookupGroup _ group@(Group _) = Just group
-lookupGroup rawGroupIndex (Groups wrapType groups) =
-  case groups V.!? groupIndex of
-    jg@(Just g) -> jg
-    (Nothing) ->
+lookupGroup _ grp@(Group _) = Just grp
+lookupGroup rawGroupIndex (Groups wrapType grps) =
+  case grps V.!? groupIndex of
+    jg@(Just _) -> jg
+    Nothing ->
       case wrapType of
-        Clamp -> Just (V.last groups)
-        Wrap -> groups V.!? (mod (V.length groups) (groupIndex + 1))
+        Clamp -> Just (V.last grps)
+        Wrap -> grps V.!? mod (V.length grps) (groupIndex + 1)
   where
     groupIndex =
       if rawGroupIndex < 0
@@ -251,7 +244,7 @@ lookupGroup rawGroupIndex (Groups wrapType groups) =
 lookupFromGroup :: Level -> Group -> Maybe KeySymbol
 lookupFromGroup level (Group v) =
   case v V.!? level of
-    jk@(Just ks) -> jk
+    jk@(Just _) -> jk
     Nothing      -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
@@ -306,14 +299,14 @@ updateModifiers _ m state =
 
 stateChangeOnKeyPress :: State -> KeySymbol -> (KeySymbol, State)
 stateChangeOnKeyPress s keysymbol =
-  case (sOnKey s) keysymbol of
-    (Right ks) ->
+  case sOnKey s keysymbol of
+    Right ks ->
       ( ks
       , (updateEffectives .
          clearStickyPresses . -- This is how it is working now
          clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
           s)
-    (Left (ModifierMap _ modifier onPressFunction _))
+    Left (ModifierMap _ modifier onPressFunction _)
     -- not consuming modifiers when a modifier is the result, bug or feature?
      ->
       ( keysymbol
@@ -321,10 +314,10 @@ stateChangeOnKeyPress s keysymbol =
 
 stateChangeOnKeyRelease :: State -> KeySymbol -> State
 stateChangeOnKeyRelease s keysymbol =
-  case (sOnKey s) keysymbol of
-    (Right ks) -> s
-    (Left (ModifierMap _ _ _ onReleaseFunction)) ->
-      ((updateEffectives . onReleaseFunction) s)
+  case sOnKey s keysymbol of
+    Right _ -> s
+    Left (ModifierMap _ _ _ onReleaseFunction) ->
+      (updateEffectives . onReleaseFunction) s
 
 clearLatches :: State -> State
 clearLatches state = state {sLatchedGroup = 0, sLatchedModifiers = 0}
@@ -333,11 +326,11 @@ updateEffectives :: State -> State
 updateEffectives state =
   state
   { sEffectiveModifiers =
-      (sDepressedModifiers state) .|. (sLatchedModifiers state) .|.
-      (sLockedModifiers state)
+      sDepressedModifiers state .|. sLatchedModifiers state .|.
+      sLockedModifiers state
   , sEffectiveGroup =
-      (sNormalizeGroup state)
-        ((sDepressedGroup state) + (sLatchedGroup state) + (sLockedGroup state))
+      sNormalizeGroup state
+        (sDepressedGroup state + sLatchedGroup state + sLockedGroup state)
   }
 
 updateDepresseds :: Modifier -> State -> State
