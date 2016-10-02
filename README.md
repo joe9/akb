@@ -2,9 +2,8 @@
 
 Understandable non-backward-compatible alternative to libxkbcommon
 
-using the src/Bindings/Xkbcomon.hsc to guide the Haskell FFI development
-
-1. cd src/Bindings && c2hsc --prefix=Bindings ../libxkbcommon/xkbcommon/xkbcommon.h
+Use the src/Bindings/Xkbcomon.hsc to guide the Haskell FFI development
+    * cd src/Bindings && c2hsc --prefix=Bindings ../libxkbcommon/xkbcommon/xkbcommon.h
 
 ## Installation
 
