@@ -5,6 +5,7 @@
 CC=gcc
 TMPDIR=/tmp/ghc/
 GHCVERSION=`TMPDIR=/tmp/ghc stack exec ghc -- --numeric-version`
+WLD=/home/j/dev/apps/wayland/wayland-install
 
 all: src/libskb.so src/libskb-xkbcommon.so
 
@@ -21,6 +22,7 @@ src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 		    -odir $(TMPDIR)/build/ \
 		    -hidir $(TMPDIR)/build/ \
 		    -O2 -dynamic -shared -fPIC \
+		    -I$(WLD)/include \
 		    -o libskb.so Skb.hs skb.c \
 		    -l"HSrts-ghc$(GHCVERSION)"
 
@@ -34,6 +36,7 @@ src/libskb-xkbcommon.so: src/**/*.hs src/xkb.c src/skb.c src/skb.h
 		    -odir $(TMPDIR)/build/ \
 		    -hidir $(TMPDIR)/build/ \
 		    -O2 -dynamic -shared -fPIC \
+		    -I$(WLD)/include \
 		    -o libskb-xkbcommon.so Skb.hs Xkb.hs skb.c xkb.c \
 		    -l"HSrts-ghc$(GHCVERSION)"
 

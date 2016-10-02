@@ -148,3 +148,12 @@ skb_keymap_mod_get_index _ = fmap modifierIndex . peekCString
 
 foreign export ccall skb_keymap_mod_get_index ::
                Word32 -> CString -> IO Word32
+
+-- TODO would have to store modifier index in the keymap/state
+skb_keymap_led_get_index :: Word32 -- KeyMap index used by pickInitialState
+                     -> CString
+                     -> IO Word32
+skb_keymap_led_get_index _ = fmap ledIndex . peekCString
+
+foreign export ccall skb_keymap_led_get_index ::
+               Word32 -> CString -> IO Word32

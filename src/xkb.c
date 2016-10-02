@@ -227,5 +227,30 @@ xkb_keymap_key_repeats (struct xkb_keymap *keymap, xkb_keycode_t key)
 xkb_mod_index_t
 xkb_keymap_mod_get_index(struct xkb_keymap *keymap, const char *name)
 {
-   return skb_keymap_mod_get_index(keymap->initial_state_index, name);
+   /* http://stackoverflow.com/a/16775684 */
+   /* to avoid the warning/error due to the const qualifier above */
+   return skb_keymap_mod_get_index(keymap->initial_state_index, (char *)name);
+}
+
+xkb_led_index_t
+xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name){
+   /* http://stackoverflow.com/a/16775684 */
+   /* to avoid the warning/error due to the const qualifier above */
+   return skb_keymap_led_get_index(keymap->initial_state_index, (char *)name);
+}
+
+/* TODO: add led functionality, keep them off for now */
+int
+xkb_state_led_index_is_active(struct xkb_state *state, xkb_led_index_t idx){
+   return 0;
+}
+
+char *
+xkb_keymap_get_as_string(struct xkb_keymap *keymap,
+			 enum xkb_keymap_format format){
+   /*    from http://stackoverflow.com/a/1775487 */
+   size_t needed = snprintf(NULL, 0, "%i", keymap->initial_state_index);
+   char  *buffer = malloc(needed+1);
+   sprintf(buffer, "%i", keymap->initial_state_index);
+   return buffer;
 }
