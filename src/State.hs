@@ -2,8 +2,9 @@ module State where
 
 import           Data.Bits
 import           Data.Default
-import qualified Data.Vector        as V
+import qualified Data.Vector  as V
 import           Data.Word
+
 --
 import KeySymbolDefinitions
 import KeySymbolToUTF
@@ -21,6 +22,7 @@ data KeyDirection
 
 -- same as xkb_state_component
 type UpdatedStateComponents = Word32
+
 type StateComponents = Word32
 
 data StateComponentBit
@@ -238,15 +240,17 @@ onKeyCodeRelease keycode state =
 
 onKeyCodeEvent :: (State -> KeySymbol -> a) -> a -> KeyCode -> State -> a
 onKeyCodeEvent f defaultValue keycode state =
-  maybe defaultValue (f state)
-     (sKeymap state V.!? fromIntegral keycode >>=
+  maybe
+    defaultValue
+    (f state)
+    (sKeymap state V.!? fromIntegral keycode >>=
      -- The lookup group is the same as the effective group
      lookupGroup (fromIntegral (sEffectiveGroup state)) >>=
      lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)))
 
 keyCodeToUTF :: KeyCode -> State -> (Word32, State)
 keyCodeToUTF keyCode state =
-  onKeyCodeEvent (\_ ks -> (keySymbolToUTF ks,state)) (0,state) keyCode state
+  onKeyCodeEvent (\_ ks -> (keySymbolToUTF ks, state)) (0, state) keyCode state
 
 findIfKeyRepeats :: KeyCode -> State -> Bool
 findIfKeyRepeats = onKeyCodeEvent doesKeyRepeat True
@@ -282,7 +286,7 @@ lookupGroup rawGroupIndex (Groups wrapType grps) =
     Nothing ->
       case wrapType of
         Clamp -> Just (V.last grps)
-        Wrap -> grps V.!? mod (V.length grps) (groupIndex + 1)
+        Wrap  -> grps V.!? mod (V.length grps) (groupIndex + 1)
   where
     groupIndex =
       if rawGroupIndex < 0
@@ -296,7 +300,7 @@ lookupFromGroup :: Level -> Group -> Maybe KeySymbol
 lookupFromGroup level (Group v) =
   case v V.!? level of
     jk@(Just _) -> jk
-    Nothing      -> v V.!? 0 -- if there is only 1 level
+    Nothing     -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
@@ -380,7 +384,8 @@ updateEffectives state =
       sDepressedModifiers state .|. sLatchedModifiers state .|.
       sLockedModifiers state
   , sEffectiveGroup =
-      sNormalizeGroup state
+      sNormalizeGroup
+        state
         (sDepressedGroup state + sLatchedGroup state + sLockedGroup state)
   }
 
@@ -401,14 +406,19 @@ keyCodeAndGroupsToKeymap keycodes =
 
 stateComponent :: State -> StateComponents -> Word32
 stateComponent state requestedStateComponent
-  | testBit requestedStateComponent (fromEnum ModifiersEffective) = sEffectiveModifiers state
-  | testBit requestedStateComponent (fromEnum GroupEffective) = sEffectiveGroup state
-
-  | testBit requestedStateComponent (fromEnum ModifiersDepressed) = sDepressedModifiers state
-  | testBit requestedStateComponent (fromEnum ModifiersLatched) = sLatchedModifiers state
-  | testBit requestedStateComponent (fromEnum ModifiersLocked) = sLockedModifiers state
-
-  | testBit requestedStateComponent (fromEnum GroupDepressed) = sDepressedGroup state
-  | testBit requestedStateComponent (fromEnum GroupLatched) = sLatchedGroup state
+  | testBit requestedStateComponent (fromEnum ModifiersEffective) =
+    sEffectiveModifiers state
+  | testBit requestedStateComponent (fromEnum GroupEffective) =
+    sEffectiveGroup state
+  | testBit requestedStateComponent (fromEnum ModifiersDepressed) =
+    sDepressedModifiers state
+  | testBit requestedStateComponent (fromEnum ModifiersLatched) =
+    sLatchedModifiers state
+  | testBit requestedStateComponent (fromEnum ModifiersLocked) =
+    sLockedModifiers state
+  | testBit requestedStateComponent (fromEnum GroupDepressed) =
+    sDepressedGroup state
+  | testBit requestedStateComponent (fromEnum GroupLatched) =
+    sLatchedGroup state
   | testBit requestedStateComponent (fromEnum GroupLocked) = sLockedGroup state
   | otherwise = 0
