@@ -16,13 +16,13 @@ Install instructions:
 
 1. Install libxkbcommon
 2. Install skb using make && make install. Below is what install does.
-    > cp src/libskb.so $(WLD)/lib/
-    > cp src/libskb-xkbcommon.so $(WLD)/lib/
-    > cp src/Skb_stub.h $(WLD)/include/
-    > cp src/skb.h $(WLD)/include/
+    * cp src/libskb.so $(WLD)/lib/
+    * cp src/libskb-xkbcommon.so $(WLD)/lib/
+    * cp src/Skb_stub.h $(WLD)/include/
+    * cp src/skb.h $(WLD)/include/
 3. cd <lib directory>/
-    > mv libxkbcommon.so.0.0.0 libxkbcommon.so.0.0.0.original
-    > ln -sf libskb-xkbcommon.so libxkbcommon.so.0.0.0
+    * mv libxkbcommon.so.0.0.0 libxkbcommon.so.0.0.0.original
+    * ln -sf libskb-xkbcommon.so libxkbcommon.so.0.0.0
 
 ## Usage
 
