@@ -2,11 +2,9 @@
 
 Understandable non-backward-compatible alternative to libxkbcommon
 
-src/Bindings/Xkbcomon.hsc files is generated using:
+using the src/Bindings/Xkbcomon.hsc to guide the Haskell FFI development
 
 1. cd src/Bindings && c2hsc --prefix=Bindings ../libxkbcommon/xkbcommon/xkbcommon.h
-2. comment out code causing build errors
-3. implement all #ccall's using ffi "export" functions in haskell and comment out all the #ccal's as the generated .h file would have all the export functions.
 
 ## Installation
 
@@ -17,9 +15,14 @@ Build Instructions:
 Install instructions:
 
 1. Install libxkbcommon
-2. Install skb
-3. cd <include directory>/libxkbcommon, ln -sf skb.h libxkbcommon.h
-4. It is probably not a good idea to do the above, instead, leave skb and libxkbcommon as 2 different entities with some common structures.
+2. Install skb using make && make install. Below is what install does.
+    . cp src/libskb.so $(WLD)/lib/
+    . cp src/libskb-xkbcommon.so $(WLD)/lib/
+    . cp src/Skb_stub.h $(WLD)/include/
+    . cp src/skb.h $(WLD)/include/
+3. cd <lib directory>/
+    . mv libxkbcommon.so.0.0.0 libxkbcommon.so.0.0.0.original
+    . ln -sf libskb-xkbcommon.so libxkbcommon.so.0.0.0
 
 ## Usage
 
