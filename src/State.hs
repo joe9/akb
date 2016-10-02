@@ -4,10 +4,57 @@ import           Data.Bits
 import           Data.Default
 import qualified Data.Vector        as V
 import           Data.Word
-
 --
 import KeySymbolDefinitions
+import KeySymbolToUTF
 import Modifiers
+
+-- /** Specifies the direction of the key (press / release). */
+-- enum xkb_key_direction {
+--     XKB_KEY_UP,   /**< The key was released. */
+--     XKB_KEY_DOWN  /**< The key was pressed. */
+-- };
+data KeyDirection
+  = Released -- Up
+  | Pressed -- Down
+  deriving (Enum)
+
+-- same as xkb_state_component
+type UpdatedStateComponents = Word32
+type StateComponents = Word32
+
+data StateComponentBit
+  = ModifiersDepressed -- (1 << 0)
+  | ModifiersLatched -- (1 << 1)
+  | ModifiersLocked -- (1 << 2)
+  | ModifiersEffective -- (1 << 3)
+  | GroupDepressed -- (1 << 4)
+  | GroupLatched -- (1 << 5)
+  | GroupLocked -- (1 << 6)
+  | GroupEffective -- (1 << 7)
+  | Leds -- (1 << 8)
+  deriving (Enum)
+
+--     /** Depressed modifiers, i.e. a key is physically holding them. */
+--     /** Latched modifiers, i.e. will be unset after the next non-modifier
+--      *  key press. */
+--     /** Locked modifiers, i.e. will be unset after the key provoking the
+--      *  lock has been pressed again. */
+--     /** Effective modifiers, i.e. currently active and affect key
+--      *  processing (derived from the other state components).
+--      *  Use this unless you explictly care how the state came about. */
+--     /** Depressed layout, i.e. a key is physically holding it. */
+--     /** Latched layout, i.e. will be unset after the next non-modifier
+--      *  key press. */
+--     /** Locked layout, i.e. will be unset after the key provoking the lock
+--      *  has been pressed again. */
+--     /** Effective layout, i.e. currently active and affects key processing
+--      *  (derived from the other state components).
+--      *  Use this unless you explictly care how the state came about. */
+--     /** LEDs (derived from the other state components). */
+-- What does Layout mean in the above data type?
+stateToStateComponent :: State -> UpdatedStateComponents
+stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
 
 data GroupOnOverflow
   = Clamp
@@ -105,12 +152,12 @@ data State = State
     -- description. It may wrap around, clamp down, or default. Few
     -- applications will actually examine the effective group, and far
     -- fewer still will examine the locked, latched, and base groups.
-  , sNormalizeGroup :: Int -> Int
+  , sNormalizeGroup :: Word32 -> Word32
     -- effective is used for lookups
-  , sEffectiveGroup :: !Int -- group index is mostly 0 -- (first group)
-  , sDepressedGroup :: !Int -- keys that are physically or logically down
-  , sLatchedGroup :: !Int
-  , sLockedGroup :: !Int
+  , sEffectiveGroup :: !Word32 -- group index is mostly 0 -- (first group)
+  , sDepressedGroup :: !Word32 -- keys that are physically or logically down
+  , sLatchedGroup :: !Word32
+  , sLockedGroup :: !Word32
     -- lookup & effective = modifiers used for lookup
     --   , sLookupModifiers :: !Modifiers
     -- The effective modifiers are the bitwise union of the
@@ -194,8 +241,12 @@ onKeyCodeEvent f defaultValue keycode state =
   maybe defaultValue (f state)
      (sKeymap state V.!? fromIntegral keycode >>=
      -- The lookup group is the same as the effective group
-     lookupGroup (sEffectiveGroup state) >>=
+     lookupGroup (fromIntegral (sEffectiveGroup state)) >>=
      lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)))
+
+keyCodeToUTF :: KeyCode -> State -> (Word32, State)
+keyCodeToUTF keyCode state =
+  onKeyCodeEvent (\_ ks -> (keySymbolToUTF ks,state)) (0,state) keyCode state
 
 findIfKeyRepeats :: KeyCode -> State -> Bool
 findIfKeyRepeats = onKeyCodeEvent doesKeyRepeat True
@@ -348,44 +399,16 @@ keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
 
--- same as xkb_key_direction
-data KeyDirection
-  = Pressed -- Down
-  | Released -- Up
-  deriving (Enum)
+stateComponent :: State -> StateComponents -> Word32
+stateComponent state requestedStateComponent
+  | testBit requestedStateComponent (fromEnum ModifiersEffective) = sEffectiveModifiers state
+  | testBit requestedStateComponent (fromEnum GroupEffective) = sEffectiveGroup state
 
--- same as xkb_state_component
-type UpdatedStateComponents = Word32
+  | testBit requestedStateComponent (fromEnum ModifiersDepressed) = sDepressedModifiers state
+  | testBit requestedStateComponent (fromEnum ModifiersLatched) = sLatchedModifiers state
+  | testBit requestedStateComponent (fromEnum ModifiersLocked) = sLockedModifiers state
 
-data StateComponentBit
-  = ModifiersDepressed -- (1 << 0)
-  | ModifiersLatched -- (1 << 1)
-  | ModifiersLocked -- (1 << 2)
-  | ModifiersEffective -- (1 << 3)
-  | GroupDepressed -- (1 << 4)
-  | GroupLatched -- (1 << 5)
-  | GroupLocked -- (1 << 6)
-  | GroupEffective -- (1 << 7)
-  | Leds -- (1 << 8)
-  deriving (Enum)
-
---     /** Depressed modifiers, i.e. a key is physically holding them. */
---     /** Latched modifiers, i.e. will be unset after the next non-modifier
---      *  key press. */
---     /** Locked modifiers, i.e. will be unset after the key provoking the
---      *  lock has been pressed again. */
---     /** Effective modifiers, i.e. currently active and affect key
---      *  processing (derived from the other state components).
---      *  Use this unless you explictly care how the state came about. */
---     /** Depressed layout, i.e. a key is physically holding it. */
---     /** Latched layout, i.e. will be unset after the next non-modifier
---      *  key press. */
---     /** Locked layout, i.e. will be unset after the key provoking the lock
---      *  has been pressed again. */
---     /** Effective layout, i.e. currently active and affects key processing
---      *  (derived from the other state components).
---      *  Use this unless you explictly care how the state came about. */
---     /** LEDs (derived from the other state components). */
--- What does Layout mean in the above data type?
-stateToStateComponent :: State -> UpdatedStateComponents
-stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
+  | testBit requestedStateComponent (fromEnum GroupDepressed) = sDepressedGroup state
+  | testBit requestedStateComponent (fromEnum GroupLatched) = sLatchedGroup state
+  | testBit requestedStateComponent (fromEnum GroupLocked) = sLockedGroup state
+  | otherwise = 0

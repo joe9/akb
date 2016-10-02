@@ -20,21 +20,22 @@
 /*       TMPDIR=/tmp/ghc stack exec ghc -- --make -no-hs-main -optc-O2 test-libSkb.c skb.o -L. -I. -lSkb && ./a.out */
 
 
-extern void __stginit_Skb(void);
+extern void __stginit_Skb (void);
 
 /* skb would be happy if this function had a definition of
    void xkb_context_new (void) but that would break compatibility.
    Hence leaving it as-is. */
 void
-skb_context_new(void)
+skb_context_new (void)
 {
-   static char *argv[] = { "libskb.so", 0 }, **argv_ = argv;
-   static int argc = 1;
-   hs_init(&argc, &argv_);
-   hs_add_root(__stginit_Skb);
+  static char *argv[] = { "libskb.so", 0 }, **argv_ = argv;
+  static int argc = 1;
+  hs_init (&argc, &argv_);
+  hs_add_root (__stginit_Skb);
 }
 
-void skb_context_unref(void)
+void
+skb_context_unref (void)
 {
-   hs_exit();
+  hs_exit ();
 }

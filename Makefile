@@ -9,7 +9,7 @@ GHCVERSION=`TMPDIR=/tmp/ghc stack exec ghc -- --numeric-version`
 all: src/libskb.so src/libskb-xkbcommon.so
 
 clean:
-	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h src/KeySymbolDefinitions.hs src/skb-libxkbcommon.so
+	$(RM) $(TMPDIR)/build/*.o $(TMPDIR)/build/*.hi src/libskb.so src/Skb_stub.h src/KeySymbolDefinitions.hs src/libskb-xkbcommon.so $(WLD)/lib/libskb.so $(WLD)/lib/libskb-xkbcommon.so $(WLD)/include/Skb_stub.h $(WLD)/include/skb.h
 
 src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 	test -d $(TMPDIR) || mkdir $(TMPDIR)
@@ -24,7 +24,7 @@ src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 		    -o libskb.so Skb.hs skb.c \
 		    -l"HSrts-ghc$(GHCVERSION)"
 
-src/libskb-xkbcommon.so: src/**/*.hs src/xkb.c src/skb.h
+src/libskb-xkbcommon.so: src/**/*.hs src/xkb.c src/skb.c src/skb.h
 	test -d $(TMPDIR) || mkdir $(TMPDIR)
 	test -d $(TMPDIR)/build || mkdir $(TMPDIR)/build
 	TMPDIR=$(TMPDIR) stack build
@@ -34,7 +34,7 @@ src/libskb-xkbcommon.so: src/**/*.hs src/xkb.c src/skb.h
 		    -odir $(TMPDIR)/build/ \
 		    -hidir $(TMPDIR)/build/ \
 		    -O2 -dynamic -shared -fPIC \
-		    -o libskb-xkbcommon.so Xkb.hs xkb.c skb.c \
+		    -o libskb-xkbcommon.so Skb.hs Xkb.hs skb.c xkb.c \
 		    -l"HSrts-ghc$(GHCVERSION)"
 
 # got this idea from
