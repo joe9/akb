@@ -20,5 +20,5 @@ cabal.project.local
 src/Skb_stub.h
 src/Xkb_stub.h
 src/libskb.so
-src/skb-libxkbcommon.so
+src/libskb-xkbcommon.so
 src/KeySymbolDefinitions.hs

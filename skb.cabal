@@ -21,7 +21,6 @@ library
   other-extensions:     ForeignFunctionInterface
                       , PatternSynonyms
   exposed-modules:     Skb
-                     , Xkb
                      , Modifiers
                      , BitMask
                      , KeySymbolDefinitions

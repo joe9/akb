@@ -1,5 +1,6 @@
 
 #include <HsFFI.h>
+#include <xkbcommon/xkbcommon.h>
 
 /* https://www.vex.net/~trebla/haskell/so.xhtml */
 /* http://stackoverflow.com/questions/27815467/haskell-dynamic-library */
