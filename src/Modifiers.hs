@@ -1,17 +1,12 @@
 {-# LANGUAGE DefaultSignatures #-}
 
-module Modifiers
-  ( Modifiers
-  , Modifier(..)
-  , setModifier
-  , clearModifier
-  , testModifier
-  ) where
+module Modifiers where
 
 import Data.Bits
 import Data.Word
 --
 import BitMask
+import NamesPatterns
 
 type Modifiers = Word32
 
@@ -53,3 +48,24 @@ clearModifier ms = clearBit ms . fromEnum
 
 testModifier :: Modifiers -> Modifier -> Bool
 testModifier ms = testBit ms . fromEnum
+
+modifierIndex :: String -> Word32
+modifierIndex name
+  | name == (unName XKB_MOD_NAME_SHIFT) = fromIntegral (fromEnum Shift)
+  | name == (unName XKB_MOD_NAME_CAPS) = fromIntegral (fromEnum Lock)
+  | name == (unName XKB_MOD_NAME_CTRL) = fromIntegral (fromEnum Control)
+  | name == (unName XKB_MOD_NAME_ALT) = fromIntegral (fromEnum Mod1)
+  | name == (unName XKB_MOD_NAME_NUM) = fromIntegral (fromEnum Mod2)
+  | name == (unName XKB_MOD_NAME_LOGO) = fromIntegral (fromEnum Mod4)
+  -- from xkbcommon/xkbcommon.h
+  -- #define XKB_MOD_INVALID     (0xffffffff)
+  | otherwise = (0xffffffff)
+
+ledIndex :: String -> Word32
+ledIndex name
+  | name == (unName XKB_LED_NAME_CAPS) = 0
+  | name == (unName XKB_LED_NAME_NUM) = 1
+  | name == (unName XKB_LED_NAME_SCROLL) = 2
+  -- from xkbcommon/xkbcommon.h
+  -- #define XKB_LED_INVALID     (0xffffffff)
+  | otherwise = (0xffffffff)

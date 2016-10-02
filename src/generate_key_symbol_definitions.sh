@@ -26,8 +26,7 @@ noKeySymbol = MkKeySymbol 0
 -- https://www.schoolofhaskell.com/user/icelandj/Pattern%20synonyms
 
 -- generated using the below commands:
---- sh generate_key_symbol_definitions.sh >|/tmp/keysymsout.hsc
-
+-- sh generate_key_symbol_definitions.sh >|KeySymbolDefinitions.hsc
 
 EOH
 

@@ -4,6 +4,7 @@ module Skb where
 
 --   http://stackoverflow.com/questions/14125057/how-to-poke-a-vector-or-to-get-a-ptr-vector-to-its-data
 import Foreign.C.Types
+import Foreign.C.String
 import Foreign.StablePtr
 import Data.Word
 import Data.Default
@@ -12,7 +13,7 @@ import Data.IORef
 import KeySymbolDefinitions
 import State
 import Keymap.CustomDvorak
--- import Modifiers
+import Modifiers
 -- import BitMask
 
 -- https://wiki.haskell.org/Foreign_Function_Interface
@@ -138,3 +139,12 @@ skb_state_key_get_utf ptr keyCode =
 
 foreign export ccall  skb_state_key_get_utf ::
                StablePtr StateIORef -> KeyCode -> IO Word32
+
+-- TODO would have to store modifier index in the keymap/state
+skb_keymap_mod_get_index :: Word32 -- KeyMap index used by pickInitialState
+                     -> CString
+                     -> IO Word32
+skb_keymap_mod_get_index _ = fmap modifierIndex . peekCString
+
+foreign export ccall skb_keymap_mod_get_index ::
+               Word32 -> CString -> IO Word32
