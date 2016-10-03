@@ -37,6 +37,8 @@ fromBitMask bm = msum $ map asInBM $ enumFrom minBound
         then return a
         else mzero
 
+-- Why is this not: testBit bm . fromEnum
+-- because the above restricts it to only Enum's
 isInBitMask
   :: (ToBitMask a)
   => Word32 -> a -> Bool

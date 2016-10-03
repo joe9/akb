@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 
 module Skb where
 
@@ -28,9 +27,6 @@ skb_state_new i = do
   stateIORef <- newIORef (pickInitialState i)
   newStablePtr (StateIORef stateIORef)
 
-foreign export ccall  skb_state_new ::
-               CInt -> IO (StablePtr StateIORef)
-
 skb_state_key_get_one_sym :: StablePtr StateIORef -> KeyCode -> IO Word32
 skb_state_key_get_one_sym ptr keycode =
   withState
@@ -47,14 +43,8 @@ withState ptr f = do
   writeIORef stateIORef updatedState
   return a
 
-foreign export ccall skb_state_key_get_one_sym ::
-               StablePtr StateIORef -> KeyCode -> IO Word32
-
 skb_state_unref :: StablePtr StateIORef -> IO ()
 skb_state_unref = freeStablePtr
-
-foreign export ccall  skb_state_unref ::
-               StablePtr StateIORef -> IO ()
 
 pickInitialState :: CInt -> State
 pickInitialState 0 = def
@@ -65,22 +55,19 @@ pickInitialState _ = customDvorak
 -- returning it.
 skb_state_update_key :: StablePtr StateIORef
                      -> KeyCode
-                     -> Word32 -- KeyDirection
-                     -> IO UpdatedStateComponents
+                     -> Word32 -- ^KeyDirection
+                     -> IO Word32 -- ^UpdatedStateComponents
 skb_state_update_key ptr keycode 0 = -- Released
   withState
     ptr
-    (onKeyCodeRelease keycode)
+    ((\(UpdatedStateComponents f,s) -> (f,s)) . onKeyCodeRelease keycode)
 skb_state_update_key ptr keycode 1 = -- Pressed
   withState
     ptr
     (\state ->
-       let (_, sc, updatedState) = onKeyCodePress keycode state
+       let (_, UpdatedStateComponents sc, updatedState) = onKeyCodePress keycode state
        in (sc, updatedState))
 skb_state_update_key _ _ _ = return 0
-
-foreign export ccall  skb_state_update_key ::
-               StablePtr StateIORef -> KeyCode -> Word32 -> IO UpdatedStateComponents
 
 skb_state_update_mask :: StablePtr StateIORef
                       -> Word32
@@ -89,7 +76,7 @@ skb_state_update_mask :: StablePtr StateIORef
                       -> Word32
                       -> Word32
                       -> Word32
-                      -> IO UpdatedStateComponents
+                      -> IO Word32 -- ^UpdatedStateComponents
 skb_state_update_mask ptr depressedModifiers latchedModifiers lockedModifiers depressedGroup latchedGroup lockedGroup =
   withState
         ptr
@@ -104,19 +91,13 @@ skb_state_update_mask ptr depressedModifiers latchedModifiers lockedModifiers de
                     , sLatchedGroup = latchedGroup
                     , sLockedGroup = lockedGroup
                     }
-            in (identifyStateChanges state newState, newState))
-
-foreign export ccall  skb_state_update_mask ::
-               StablePtr StateIORef -> Word32 -> Word32 -> Word32 -> Word32 -> Word32 -> Word32 -> IO UpdatedStateComponents
+            in ((unUpdatedStateComponents (identifyStateChanges state newState), newState)))
 
 skb_keymap_key_repeats :: Word32
                      -> KeyCode
                      -> Word32
 skb_keymap_key_repeats keymapIndex keycode =
     (fromIntegral . fromEnum . findIfKeyRepeats keycode . pickInitialState . fromIntegral) keymapIndex
-
-foreign export ccall  skb_keymap_key_repeats ::
-               Word32 -> KeyCode -> Word32
 
 skb_state_serialize_state_component :: StablePtr StateIORef
                       -> Word32
@@ -125,11 +106,9 @@ skb_state_serialize_state_component ptr requestedStateComponent =
   withState
         ptr
         (\state ->
-            let value = stateComponent state requestedStateComponent
+            let value = stateComponent state
+                         (UpdatedStateComponents requestedStateComponent)
             in (value, state))
-
-foreign export ccall  skb_state_serialize_state_component ::
-               StablePtr StateIORef -> Word32 -> IO Word32
 
 skb_state_key_get_utf :: StablePtr StateIORef
                       -> KeyCode
@@ -137,17 +116,11 @@ skb_state_key_get_utf :: StablePtr StateIORef
 skb_state_key_get_utf ptr keyCode =
   withState ptr (keyCodeToUTF keyCode)
 
-foreign export ccall  skb_state_key_get_utf ::
-               StablePtr StateIORef -> KeyCode -> IO Word32
-
 -- TODO would have to store modifier index in the keymap/state
 skb_keymap_mod_get_index :: Word32 -- KeyMap index used by pickInitialState
                      -> CString
                      -> IO Word32
 skb_keymap_mod_get_index _ = fmap modifierIndex . peekCString
-
-foreign export ccall skb_keymap_mod_get_index ::
-               Word32 -> CString -> IO Word32
 
 -- TODO would have to store modifier index in the keymap/state
 skb_keymap_led_get_index :: Word32 -- KeyMap index used by pickInitialState
@@ -155,5 +128,3 @@ skb_keymap_led_get_index :: Word32 -- KeyMap index used by pickInitialState
                      -> IO Word32
 skb_keymap_led_get_index _ = fmap ledIndex . peekCString
 
-foreign export ccall skb_keymap_led_get_index ::
-               Word32 -> CString -> IO Word32

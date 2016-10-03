@@ -1,14 +1,16 @@
 module State where
 
 import Data.Bits
+import Data.Maybe
 import Data.Default
 import qualified Data.Vector as V
 import Data.Word
-
+import Text.Groom
 --
 import KeySymbolDefinitions
 import KeySymbolToUTF
 import Modifiers
+import BitMask
 
 -- /** Specifies the direction of the key (press / release). */
 -- enum xkb_key_direction {
@@ -21,21 +23,27 @@ data KeyDirection
   deriving (Enum)
 
 -- same as xkb_state_component
-type UpdatedStateComponents = Word32
+newtype UpdatedStateComponents = UpdatedStateComponents {unUpdatedStateComponents  :: Word32}
+  deriving Eq
 
-type StateComponents = Word32
+instance Show UpdatedStateComponents where
+  show = groom . (fromBitMask :: Word32 -> [StateComponentBit]) . unUpdatedStateComponents
+
+-- type StateComponents = Word32
 
 data StateComponentBit
-  = ModifiersDepressed -- (1 << 0)
-  | ModifiersLatched -- (1 << 1)
-  | ModifiersLocked -- (1 << 2)
-  | ModifiersEffective -- (1 << 3)
-  | GroupDepressed -- (1 << 4)
-  | GroupLatched -- (1 << 5)
-  | GroupLocked -- (1 << 6)
-  | GroupEffective -- (1 << 7)
-  | Leds -- (1 << 8)
-  deriving (Enum)
+  = ModifiersDepressed -- ^(1 << 0)
+  | ModifiersLatched -- ^(1 << 1)
+  | ModifiersLocked -- ^(1 << 2)
+  | ModifiersEffective -- ^(1 << 3)
+  | GroupDepressed -- ^(1 << 4)
+  | GroupLatched -- ^(1 << 5)
+  | GroupLocked -- ^(1 << 6)
+  | GroupEffective -- ^(1 << 7)
+  | Leds -- ^(1 << 8)
+  deriving (Bounded, Enum, Eq, Show)
+
+instance ToBitMask StateComponentBit
 
 --     /** Depressed modifiers, i.e. a key is physically holding them. */
 --     /** Latched modifiers, i.e. will be unset after the next non-modifier
@@ -54,9 +62,9 @@ data StateComponentBit
 --      *  (derived from the other state components).
 --      *  Use this unless you explictly care how the state came about. */
 --     /** LEDs (derived from the other state components). */
--- What does Layout mean in the above data type?
-stateToStateComponent :: State -> UpdatedStateComponents
-stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
+-- Layout == Group
+-- stateToStateComponent :: State -> UpdatedStateComponents
+-- stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
 
 data GroupOnOverflow
   = Clamp
@@ -172,12 +180,9 @@ data State = State
   }
 
 instance Eq State where
-  (State _ _ _ _ _ eg dg lag log em dm lam lom) == (State _ _ _ _ _ egb dgb lagb logb emb dmb lamb lomb) =
-    eg == egb && dg == dgb && lag == lagb && log == logb &&
+  (State _ _ _ _ _ eg dg lag locg em dm lam lom) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb) =
+    eg == egb && dg == dgb && lag == lagb && locg == locgb &&
     em == emb && dm == dmb && lam == lamb && lom == lomb
-
-instance Show State where
-  show a = "show State is empty"
 
 instance Default State where
   def =
@@ -198,34 +203,35 @@ instance Default State where
 
 identifyStateChanges :: State -> State -> UpdatedStateComponents
 identifyStateChanges old new =
-  (updateStateComponentBit
-     (sDepressedGroup old == sDepressedGroup new)
-     GroupDepressed .
-   updateStateComponentBit
-     (sDepressedModifiers old == sDepressedModifiers new)
-     ModifiersDepressed .
-   updateStateComponentBit (sLatchedGroup old == sLatchedGroup new) GroupLatched .
-   updateStateComponentBit
-     (sLatchedModifiers old == sLatchedModifiers new)
-     ModifiersLatched .
-   updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked .
-   updateStateComponentBit
-     (sLockedModifiers old == sLockedModifiers new)
-     ModifiersLocked .
-   updateStateComponentBit
-     (sEffectiveGroup old == sEffectiveGroup new)
-     GroupEffective .
-   updateStateComponentBit
-     (sEffectiveModifiers old == sEffectiveModifiers new)
-     ModifiersEffective)
-    0
+  ( UpdatedStateComponents .
+    toBitMask .
+    catMaybes)
+        [updateStateComponentBit
+            (sDepressedGroup old == sDepressedGroup new)
+            GroupDepressed ,
+        updateStateComponentBit
+            (sDepressedModifiers old == sDepressedModifiers new)
+            ModifiersDepressed ,
+        updateStateComponentBit (sLatchedGroup old == sLatchedGroup new) GroupLatched ,
+        updateStateComponentBit
+            (sLatchedModifiers old == sLatchedModifiers new)
+            ModifiersLatched ,
+        updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked ,
+        updateStateComponentBit
+            (sLockedModifiers old == sLockedModifiers new)
+            ModifiersLocked ,
+        updateStateComponentBit
+            (sEffectiveGroup old == sEffectiveGroup new)
+            GroupEffective ,
+        updateStateComponentBit
+            (sEffectiveModifiers old == sEffectiveModifiers new)
+            ModifiersEffective]
 
 updateStateComponentBit :: Bool
                         -> StateComponentBit
-                        -> UpdatedStateComponents
-                        -> UpdatedStateComponents
-updateStateComponentBit True i sc = clearBit sc (fromEnum i)
-updateStateComponentBit False i sc = setBit sc (fromEnum i)
+                        -> Maybe StateComponentBit
+updateStateComponentBit True _ = Nothing
+updateStateComponentBit False i = Just i
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
@@ -241,8 +247,9 @@ onKeyCodePress keycode state =
 
 onKeyCodeRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
 onKeyCodeRelease keycode state =
-  ((\s -> (identifyStateChanges state s, s)) . f keycode)
-    (updateEffectives state)
+  let updatedEffectivesState = updateEffectives state
+  in ((\ns -> (identifyStateChanges updatedEffectivesState ns, ns)) . f keycode)
+     updatedEffectivesState
   where
     f k s = onKeyCodeEvent stateChangeOnKeyRelease s k s
 
@@ -412,21 +419,51 @@ keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
 
-stateComponent :: State -> StateComponents -> Word32
-stateComponent state requestedStateComponent
-  | testBit requestedStateComponent (fromEnum ModifiersEffective) =
+stateComponent :: State -> UpdatedStateComponents -> Word32
+stateComponent state (UpdatedStateComponents requestedStateComponent)
+  | isInBitMask requestedStateComponent ModifiersEffective =
     sEffectiveModifiers state
-  | testBit requestedStateComponent (fromEnum GroupEffective) =
+  | isInBitMask requestedStateComponent  GroupEffective =
     sEffectiveGroup state
-  | testBit requestedStateComponent (fromEnum ModifiersDepressed) =
+  | isInBitMask requestedStateComponent  ModifiersDepressed =
     sDepressedModifiers state
-  | testBit requestedStateComponent (fromEnum ModifiersLatched) =
+  | isInBitMask requestedStateComponent  ModifiersLatched =
     sLatchedModifiers state
-  | testBit requestedStateComponent (fromEnum ModifiersLocked) =
+  | isInBitMask requestedStateComponent  ModifiersLocked =
     sLockedModifiers state
-  | testBit requestedStateComponent (fromEnum GroupDepressed) =
+  | isInBitMask requestedStateComponent  GroupDepressed =
     sDepressedGroup state
-  | testBit requestedStateComponent (fromEnum GroupLatched) =
+  | isInBitMask requestedStateComponent  GroupLatched =
     sLatchedGroup state
-  | testBit requestedStateComponent (fromEnum GroupLocked) = sLockedGroup state
+  | isInBitMask requestedStateComponent  GroupLocked = sLockedGroup state
   | otherwise = 0
+
+-- might have to add this as a field to State and use lens to avoid
+-- the deep nesting code
+-- convenience data type to show State data
+data ShowState = ShowState
+  {
+    ssEffectiveGroup :: !Word32 -- ^ group index is mostly 0 -- (first group)
+  , ssDepressedGroup :: !Word32 -- ^keys that are physically or logically down
+  , ssLatchedGroup :: !Word32
+  , ssLockedGroup :: !Word32
+  , ssEffectiveModifiers :: ![Modifier]
+  , ssDepressedModifiers :: ![Modifier] -- ^modifiers that are physically or logically down
+  , ssLatchedModifiers :: ![Modifier]
+  , ssLockedModifiers :: ![Modifier]
+  } deriving Show
+
+stateToShowState :: State -> ShowState
+stateToShowState state =
+  ShowState
+    (sEffectiveGroup state)
+    (sDepressedGroup state)
+    (sLatchedGroup state)
+    (sLockedGroup state)
+    (fromBitMask (sEffectiveModifiers state))
+    (fromBitMask (sDepressedModifiers state))
+    (fromBitMask (sLatchedModifiers state))
+    (fromBitMask (sLockedModifiers state))
+
+instance Show State where
+  show = groom . stateToShowState

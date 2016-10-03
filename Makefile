@@ -17,6 +17,7 @@ src/libskb.so: src/**/*.hs src/skb.c src/skb.h
 	test -d $(TMPDIR)/build || mkdir $(TMPDIR)/build
 	TMPDIR=$(TMPDIR) stack build
 	cd src && hsc2hs KeySymbolDefinitions.hsc
+	cd src && hsc2hs NamesPatterns.hsc
 	cd src && \
 		TMPDIR=$(TMPDIR) stack exec ghc -- --make \
 		    -odir $(TMPDIR)/build/ \
@@ -31,6 +32,7 @@ src/libskb-xkbcommon.so: src/**/*.hs src/xkb.c src/skb.c src/skb.h
 	test -d $(TMPDIR)/build || mkdir $(TMPDIR)/build
 	TMPDIR=$(TMPDIR) stack build
 	cd src && hsc2hs KeySymbolDefinitions.hsc
+	cd src && hsc2hs NamesPatterns.hsc
 	cd src && \
 		TMPDIR=$(TMPDIR) stack exec ghc -- --make \
 		    -odir $(TMPDIR)/build/ \
