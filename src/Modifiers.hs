@@ -69,3 +69,51 @@ ledIndex name
   -- from xkbcommon/xkbcommon.h
   -- #define XKB_LED_INVALID     (0xffffffff)
   | otherwise = (0xffffffff)
+
+setShift :: Modifiers -> Modifiers
+setShift = flip setBit (fromEnum Shift)
+
+setLock :: Modifiers -> Modifiers
+setLock = flip setBit (fromEnum Lock)
+
+setControl :: Modifiers -> Modifiers
+setControl = flip setBit (fromEnum Control)
+
+setMod1 :: Modifiers -> Modifiers
+setMod1 = flip setBit (fromEnum Mod1)
+
+setMod2 :: Modifiers -> Modifiers
+setMod2 = flip setBit (fromEnum Mod2)
+
+setMod3 :: Modifiers -> Modifiers
+setMod3 = flip setBit (fromEnum Mod3)
+
+setMod4 :: Modifiers -> Modifiers
+setMod4 = flip setBit (fromEnum Mod4)
+
+setMod5 :: Modifiers -> Modifiers
+setMod5 = flip setBit (fromEnum Mod5)
+
+clearShift :: Modifiers -> Modifiers
+clearShift = flip clearBit (fromEnum Shift)
+
+clearLock :: Modifiers -> Modifiers
+clearLock = flip clearBit (fromEnum Lock)
+
+clearControl :: Modifiers -> Modifiers
+clearControl = flip clearBit (fromEnum Control)
+
+clearMod1 :: Modifiers -> Modifiers
+clearMod1 = flip clearBit (fromEnum Mod1)
+
+clearMod2 :: Modifiers -> Modifiers
+clearMod2 = flip clearBit (fromEnum Mod2)
+
+clearMod3 :: Modifiers -> Modifiers
+clearMod3 = flip clearBit (fromEnum Mod3)
+
+clearMod4 :: Modifiers -> Modifiers
+clearMod4 = flip clearBit (fromEnum Mod4)
+
+clearMod5 :: Modifiers -> Modifiers
+clearMod5 = flip clearBit (fromEnum Mod5)

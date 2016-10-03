@@ -29,6 +29,30 @@ customDvorakOnKey XKB_KEY_Control_L =
        (stickyPressModifier XKB_KEY_Control_L Control)
        id -- nothing to do in sticky mode for release
     )
+customDvorakOnKey XKB_KEY_Shift_L =
+  Left
+    (ModifierMap
+       XKB_KEY_Shift_L
+       Shift
+       (stickyPressModifier XKB_KEY_Shift_L Shift)
+       id -- nothing to do in sticky mode for release
+    )
+customDvorakOnKey XKB_KEY_Alt_L =
+  Left
+    (ModifierMap
+       XKB_KEY_Alt_L
+       Mod1
+       (stickyPressModifier XKB_KEY_Alt_L Mod1)
+       id -- nothing to do in sticky mode for release
+    )
+customDvorakOnKey XKB_KEY_Meta_L =
+  Left
+    (ModifierMap
+       XKB_KEY_Meta_L
+       Mod3
+       (stickyPressModifier XKB_KEY_Meta_L Mod3)
+       id -- nothing to do in sticky mode for release
+    )
 customDvorakOnKey k = Right k
 
 -- use the below commands:
