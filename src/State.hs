@@ -1,9 +1,9 @@
 module State where
 
-import           Data.Bits
-import           Data.Default
-import qualified Data.Vector  as V
-import           Data.Word
+import Data.Bits
+import Data.Default
+import qualified Data.Vector as V
+import Data.Word
 
 --
 import KeySymbolDefinitions
@@ -68,9 +68,9 @@ data Group
            (V.Vector Group)
 
 data ModifierMap = ModifierMap
-  { mKeySymbol    :: KeySymbol
-  , mModifier     :: Modifier
-  , mWhenPressed  :: State -> State
+  { mKeySymbol :: KeySymbol
+  , mModifier :: Modifier
+  , mWhenPressed :: State -> State
   , mWhenReleased :: State -> State
   }
 
@@ -171,6 +171,14 @@ data State = State
   , sLockedModifiers :: !Modifiers
   }
 
+instance Eq State where
+  (State _ _ _ _ _ eg dg lag log em dm lam lom) == (State _ _ _ _ _ egb dgb lagb logb emb dmb lamb lomb) =
+    eg == egb && dg == dgb && lag == lagb && log == logb &&
+    em == emb && dm == dmb && lam == lamb && lom == lomb
+
+instance Show State where
+  show a = "show State is empty"
+
 instance Default State where
   def =
     State
@@ -216,7 +224,7 @@ updateStateComponentBit :: Bool
                         -> StateComponentBit
                         -> UpdatedStateComponents
                         -> UpdatedStateComponents
-updateStateComponentBit True i sc  = clearBit sc (fromEnum i)
+updateStateComponentBit True i sc = clearBit sc (fromEnum i)
 updateStateComponentBit False i sc = setBit sc (fromEnum i)
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
@@ -260,7 +268,7 @@ doesKeyRepeat s keysymbol =
   case sOnKey s keysymbol of
     Right _ -> True
     -- assuming all modifiers do not repeat
-    Left _  -> False
+    Left _ -> False
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -286,7 +294,7 @@ lookupGroup rawGroupIndex (Groups wrapType grps) =
     Nothing ->
       case wrapType of
         Clamp -> Just (V.last grps)
-        Wrap  -> grps V.!? mod (V.length grps) (groupIndex + 1)
+        Wrap -> grps V.!? mod (V.length grps) (groupIndex + 1)
   where
     groupIndex =
       if rawGroupIndex < 0
@@ -300,7 +308,7 @@ lookupFromGroup :: Level -> Group -> Maybe KeySymbol
 lookupFromGroup level (Group v) =
   case v V.!? level of
     jk@(Just _) -> jk
-    Nothing     -> v V.!? 0 -- if there is only 1 level
+    Nothing -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
