@@ -40,6 +40,7 @@ struct xkb_context
 XKB_EXPORT struct xkb_context *
 xkb_context_new (enum xkb_context_flags flags)
 {
+   /*    printf("xkb_context_new entered"); */
    struct xkb_context *ctx = calloc (1, sizeof (*ctx));
    ctx->log_level = XKB_LOG_LEVEL_ERROR;
    ctx->log_verbosity = 0;
@@ -54,6 +55,7 @@ xkb_context_new (enum xkb_context_flags flags)
    /*    env = secure_getenv("XKB_LOG_VERBOSITY"); */
    /*    if (env) */
    /*       xkb_context_set_log_verbosity(ctx, log_verbosity(env)); */
+   /*    printf("xkb_context_new exited"); */
    return ctx;
 }
 
@@ -64,10 +66,11 @@ xkb_context_new (enum xkb_context_flags flags)
 XKB_EXPORT void
 xkb_context_unref (struct xkb_context *ctx)
 {
+   /*    printf("xkb_context_unref"); */
    if (!ctx)
       return;
-   skb_context_unref ();
    free (ctx);
+   skb_context_unref ();
 }
 
 /* Common keyboard description structure */
@@ -81,10 +84,12 @@ xkb_keymap_new_from_names (struct xkb_context *ctx,
 			   const struct xkb_rule_names *rmlvo_in,
 			   enum xkb_keymap_compile_flags flags)
 {
+   /*    printf("xkb_keymap_new_from_names entered"); */
    struct xkb_keymap *keymap = malloc (sizeof *keymap);
    *keymap = (struct xkb_keymap)
 	 {
 	    .initial_state_index = 1};
+   /*    printf("xkb_keymap_new_from_names exited"); */
    return keymap;
 }
 
@@ -94,10 +99,12 @@ xkb_keymap_new_from_buffer (struct xkb_context *ctx,
 			    enum xkb_keymap_format format,
 			    enum xkb_keymap_compile_flags flags)
 {
+   /*    printf("xkb_keymap_new_from_buffer entered"); */
    struct xkb_keymap *keymap = malloc (sizeof *keymap);
    *keymap = (struct xkb_keymap)
 	 {
 	    .initial_state_index = 1};
+   /*    printf("xkb_keymap_new_from_buffer exited"); */
    return keymap;
 }
 
@@ -107,10 +114,12 @@ xkb_keymap_new_from_file (struct xkb_context *ctx,
 			  enum xkb_keymap_format format,
 			  enum xkb_keymap_compile_flags flags)
 {
+   /*    printf("xkb_keymap_new_from_file entered"); */
    struct xkb_keymap *keymap = malloc (sizeof *keymap);
    *keymap = (struct xkb_keymap)
 	 {
 	    .initial_state_index = 1};
+   /*    printf("xkb_keymap_new_from_file exited"); */
    return keymap;
 }
 
@@ -120,6 +129,7 @@ xkb_keymap_new_from_string (struct xkb_context *ctx,
 			    enum xkb_keymap_format format,
 			    enum xkb_keymap_compile_flags flags)
 {
+   /*    printf("xkb_keymap_new_from_string"); */
    return xkb_keymap_new_from_buffer (ctx, string, strlen (string),
 				      format, flags);
 }
@@ -127,6 +137,7 @@ xkb_keymap_new_from_string (struct xkb_context *ctx,
 XKB_EXPORT void
 xkb_keymap_unref (struct xkb_keymap *keymap)
 {
+   /*    printf("xkb_keymap_unref"); */
    if (!keymap)
       return;
    free (keymap);
@@ -137,29 +148,32 @@ struct xkb_state
    void *hs_stable_state_ptr;	/* C representation of a StablePtr */
    /*
      /*    TODO */
-   /*
-    * We mustn't clear a base modifier if there's another depressed key
-    * which affects it, e.g. given this sequence
-    * < Left Shift down, Right Shift down, Left Shift Up >
-    * the modifier should still be set. This keeps the count.
-    */
-   /*    int16_t mod_key_count[XKB_MAX_MODS]; */
+      /*
+       * We mustn't clear a base modifier if there's another depressed key
+       * which affects it, e.g. given this sequence
+       * < Left Shift down, Right Shift down, Left Shift Up >
+       * the modifier should still be set. This keeps the count.
+       */
+      /*    int16_t mod_key_count[XKB_MAX_MODS]; */
 };
 
 XKB_EXPORT struct xkb_state *
 xkb_state_new (struct xkb_keymap *keymap)
 {
+   /*       printf("xkb_state_new entered"); */
    /* use this as It's an assignment on the entire struct, not just one field. */
    struct xkb_state *state = malloc (sizeof *state);
    *state = (struct xkb_state)
 	 {
 	    .hs_stable_state_ptr = skb_state_new (keymap->initial_state_index)};
+   /*       printf("xkb_state_new exited"); */
    return state;
 }
 
 XKB_EXPORT void
 xkb_state_unref (struct xkb_state *state)
 {
+   /*    printf("xkb_state_unref entered"); */
    if (!state)
       return;
    skb_state_unref (state->hs_stable_state_ptr);
@@ -169,18 +183,20 @@ xkb_state_unref (struct xkb_state *state)
 xkb_keysym_t
 xkb_state_key_get_one_sym (struct xkb_state * state, xkb_keycode_t key)
 {
+   /*    printf("xkb_state_key_get_one_sym"); */
    return skb_state_key_get_one_sym (state->hs_stable_state_ptr, key);
 }
 
 enum xkb_state_component
 xkb_state_update_mask (struct xkb_state *state,
 		       xkb_mod_mask_t depressed_mods,
-		       xkb_mod_mask_t latched_mods,
-		       xkb_mod_mask_t locked_mods,
-		       xkb_layout_index_t depressed_layout,
-		       xkb_layout_index_t latched_layout,
-		       xkb_layout_index_t locked_layout)
+				xkb_mod_mask_t latched_mods,
+				xkb_mod_mask_t locked_mods,
+				xkb_layout_index_t depressed_layout,
+				xkb_layout_index_t latched_layout,
+				xkb_layout_index_t locked_layout)
 {
+   /*    printf("xkb_state_update_mask"); */
    return skb_state_update_mask (state->hs_stable_state_ptr,
 				 depressed_mods,
 				 latched_mods,
@@ -193,6 +209,7 @@ enum xkb_state_component
 xkb_state_update_key (struct xkb_state *state, xkb_keycode_t key,
 		      enum xkb_key_direction direction)
 {
+   /*    printf("xkb_state_update_key"); */
    return skb_state_update_key (state->hs_stable_state_ptr, key, direction);
 }
 
@@ -200,6 +217,7 @@ xkb_mod_mask_t
 xkb_state_serialize_mods (struct xkb_state * state,
 			  enum xkb_state_component components)
 {
+   /*    printf("xkb_state_serialize_mods"); */
    return skb_state_serialize_state_component (state->hs_stable_state_ptr,
 					       components);
 }
@@ -208,6 +226,7 @@ xkb_mod_mask_t
 xkb_state_serialize_layout (struct xkb_state * state,
 			    enum xkb_state_component components)
 {
+   /*    printf("xkb_state_serialize_layout"); */
    return skb_state_serialize_state_component (state->hs_stable_state_ptr,
 					       components);
 }
@@ -215,18 +234,21 @@ xkb_state_serialize_layout (struct xkb_state * state,
 uint32_t
 xkb_state_key_get_utf32 (struct xkb_state * state, xkb_keycode_t key)
 {
+   /*    printf("xkb_state_key_get_utf32"); */
    return skb_state_key_get_utf (state->hs_stable_state_ptr, key);
 }
 
 int
 xkb_keymap_key_repeats (struct xkb_keymap *keymap, xkb_keycode_t key)
 {
+   /*    printf("xkb_keymap_key_repeats"); */
    return skb_keymap_key_repeats (keymap->initial_state_index, key);
 }
 
 xkb_mod_index_t
 xkb_keymap_mod_get_index(struct xkb_keymap *keymap, const char *name)
 {
+   /*    printf("xkb_keymap_mod_get_index"); */
    /* http://stackoverflow.com/a/16775684 */
    /* to avoid the warning/error due to the const qualifier above */
    return skb_keymap_mod_get_index(keymap->initial_state_index, (char *)name);
@@ -234,6 +256,7 @@ xkb_keymap_mod_get_index(struct xkb_keymap *keymap, const char *name)
 
 xkb_led_index_t
 xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name){
+   /*    printf("xkb_keymap_led_get_index"); */
    /* http://stackoverflow.com/a/16775684 */
    /* to avoid the warning/error due to the const qualifier above */
    return skb_keymap_led_get_index(keymap->initial_state_index, (char *)name);
@@ -242,15 +265,18 @@ xkb_keymap_led_get_index(struct xkb_keymap *keymap, const char *name){
 /* TODO: add led functionality, keep them off for now */
 int
 xkb_state_led_index_is_active(struct xkb_state *state, xkb_led_index_t idx){
+   /*    printf("xkb_keymap_led_index_is_active"); */
    return 0;
 }
 
 char *
 xkb_keymap_get_as_string(struct xkb_keymap *keymap,
 			 enum xkb_keymap_format format){
+   /*    printf("xkb_keymap_get_as_string entered"); */
    /*    from http://stackoverflow.com/a/1775487 */
    size_t needed = snprintf(NULL, 0, "%i", keymap->initial_state_index);
    char  *buffer = malloc(needed+1);
    sprintf(buffer, "%i", keymap->initial_state_index);
+   /*    printf("xkb_keymap_get_as_string exited"); */
    return buffer;
 }
