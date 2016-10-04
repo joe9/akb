@@ -337,9 +337,10 @@ clearStickyPresses state =
 stickyPressModifier :: KeySymbol -> Modifier -> State -> State
 stickyPressModifier _ m state
   | testModifier (sLockedModifiers state) m
-   -- if the key is already locked, do not need to do anything
-   -- but better to ensure that Depressed has it
-   = state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
+   -- if the key is already locked, unlock it
+   = state { sLockedModifiers = clearModifier (sLockedModifiers state) m
+           , sDepressedModifiers = setModifier (sDepressedModifiers state) m
+           }
   | testModifier (sLatchedModifiers state) m
    -- if the key was previously latched, lock it and remove the latch
    -- but better to ensure that Depressed has it
@@ -365,10 +366,6 @@ releaseModifier _ m state =
   { sDepressedModifiers = clearModifier (sDepressedModifiers state) m
   }
 
-updateModifiers :: KeySymbol -> Modifier -> State -> State
-updateModifiers _ m state =
-  state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
-
 stateChangeOnPress :: State -> KeySymbol -> State
 stateChangeOnPress state keysymbol =
   case sOnKeyEvent state keysymbol of
@@ -387,12 +384,19 @@ stateChangeOnRelease state keysymbol =
       (updateEffectives . releaseModifier ks m) state
     Right _ ->
       (updateEffectives .
-         clearStickyPresses . -- This is how it is working now
-         clearLatches)
+         resetLatchesToDepresseds)
           state
 
-clearLatches :: State -> State
-clearLatches state = state {sLatchedGroup = 0, sLatchedModifiers = 0}
+-- if there is no latch set for a depressed modifier, do nothing -- when non-sticky
+-- when there is a latch set and it is a depressed modifier, do nothing
+-- when there is a latch set and it is not a depressed modifier, remove latch
+resetLatchesToDepresseds :: State -> State
+resetLatchesToDepresseds state
+  = state {sLatchedModifiers = sDepressedModifiers state .&. sLatchedModifiers state
+          ,sLatchedGroup = if sLatchedGroup state == sDepressedGroup state
+                              then sLatchedGroup state
+                              else 0
+          }
 
 updateEffectives :: State -> State
 updateEffectives state =

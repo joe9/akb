@@ -31,34 +31,35 @@ tests =
     , testCase "testIdentifyStateChanges07" testIdentifyStateChanges07
     , testCase "testIdentifyStateChanges08" testIdentifyStateChanges08
     , testCase "testIdentifyStateChanges09" testIdentifyStateChanges09
---
-    , testCase "testOnKeyCodePress01" testOnKeyCodePress01
-    , testCase "testOnKeyCodePress02" testOnKeyCodePress02
-    , testCase "testOnKeyCodePress03" testOnKeyCodePress03
-    , testCase "testOnKeyCodePress04" testOnKeyCodePress04
-    , testCase "testOnKeyCodePress05" testOnKeyCodePress05
-    , testCase "testOnKeyCodePress06" testOnKeyCodePress06
-    , testCase "testOnKeyCodePress07" testOnKeyCodePress07
-    , testCase "testOnKeyCodePress08" testOnKeyCodePress08
-    , testCase "testOnKeyCodePress09" testOnKeyCodePress09
-    , testCase "testOnKeyCodePress10" testOnKeyCodePress10
-    , testCase "testOnKeyCodePress11" testOnKeyCodePress11
---
-    , testCase "testOnKeyCodeRelease01" testOnKeyCodeRelease01
-    , testCase "testOnKeyCodeRelease02" testOnKeyCodeRelease02
---
+    , testCase "testOnKeyPress01" testOnKeyPress01
+    , testCase "testOnKeyPress02" testOnKeyPress02
+    , testCase "testOnKeyPress03" testOnKeyPress03
+    , testCase "testOnKeyPress04" testOnKeyPress04
+    , testCase "testOnKeyPress05" testOnKeyPress05
+    , testCase "testOnKeyPress06" testOnKeyPress06
+    , testCase "testOnKeyPress07" testOnKeyPress07
+    , testCase "testOnKeyPress08" testOnKeyPress08
+    , testCase "testOnKeyPress09" testOnKeyPress09
+    , testCase "testOnKeyPress10" testOnKeyPress10
+    , testCase "testOnKeyPress11" testOnKeyPress11
+    , testCase "testOnKeyRelease01" testOnKeyRelease01
+    , testCase "testOnKeyRelease02" testOnKeyRelease02
+    , testCase "testOnKeyRelease03" testOnKeyRelease03
     , testCase "testShiftLevelAlphabet01" testShiftLevelAlphabet01
     , testCase "testShiftLevelAlphabet02" testShiftLevelAlphabet02
---
     , testCase "testStickyLocking01" testStickyLocking01
     , testCase "testStickyLocking02" testStickyLocking02
     , testCase "testStickyLocking03" testStickyLocking03
     , testCase "testStickyLocking04" testStickyLocking04
---
     , testCase "testNonStickyLatching01" testNonStickyLatching01
     , testCase "testNonStickyLatching02" testNonStickyLatching02
     ]
 
+--
+--
+--
+--
+--
 testIdentifyStateChanges01 :: Assertion
 testIdentifyStateChanges01 =
   (identifyStateChanges def def) @?= UpdatedStateComponents 0
@@ -109,54 +110,56 @@ testIdentifyStateChanges10 =
   UpdatedStateComponents 0b10000000
 
 -- a keycode = 38, keysymbol = 0x61
--- using the default void keymap
-testOnKeyCodePress01 :: Assertion
-testOnKeyCodePress01 =
-  (onKeyCodePress 38 def) @?= (MkKeySymbol 0, UpdatedStateComponents 0, def)
+-- using the default void keymap, should return 0
+testOnKeyPress01 :: Assertion
+testOnKeyPress01 = (onKeyPress 38 def) @?= (UpdatedStateComponents 0, def)
 
 -- using the CustomDvorak keymap
-testOnKeyCodePress02 :: Assertion
-testOnKeyCodePress02 =
-  (onKeyCodePress 38 (pickInitialState 1)) @?=
-  (MkKeySymbol 0x61, UpdatedStateComponents 0, pickInitialState 1)
+testOnKeyPress02 :: Assertion
+testOnKeyPress02 =
+  (onKeyPress 38 (pickInitialState 1)) @?=
+  (UpdatedStateComponents 0, pickInitialState 1)
 
-testOnKeyCodePress03 :: Assertion
-testOnKeyCodePress03 =
-  (onKeyCodePress 38 (pickInitialState 1)) @?=
-  (MkKeySymbol 0x61, UpdatedStateComponents 0, pickInitialState 1)
+testOnKeyPress03 :: Assertion
+testOnKeyPress03 =
+  (onKeyPress 38 (pickInitialState 1)) @?=
+  (UpdatedStateComponents 0, pickInitialState 1)
 
 -- o keycode 39, keysymbol 0x6f
-testOnKeyCodePress04 :: Assertion
-testOnKeyCodePress04 =
-  (onKeyCodePress 39 (pickInitialState 1)) @?=
-  (MkKeySymbol 0x6f, UpdatedStateComponents 0, pickInitialState 1)
+testOnKeyPress04 :: Assertion
+testOnKeyPress04 =
+  (onKeyPress 39 (pickInitialState 1)) @?=
+  (UpdatedStateComponents 0, pickInitialState 1)
 
 -- q keycode 53, keysymbol 0x71
-testOnKeyCodePress05 :: Assertion
-testOnKeyCodePress05 =
-  (onKeyCodePress 53 (pickInitialState 1)) @?=
-  (MkKeySymbol 0x71, UpdatedStateComponents 0, pickInitialState 1)
+testOnKeyPress05 :: Assertion
+testOnKeyPress05 =
+  (onKeyPress 53 (pickInitialState 1)) @?=
+  (UpdatedStateComponents 0, pickInitialState 1)
 
 -- Escape keycode 9, keysymbol 0xff1b
-testOnKeyCodePress06 :: Assertion
-testOnKeyCodePress06 =
-  (onKeyCodePress 9 (pickInitialState 1)) @?=
-  (MkKeySymbol 0xff1b, UpdatedStateComponents 0, pickInitialState 1)
+testOnKeyPress06 :: Assertion
+testOnKeyPress06 =
+  (onKeyPress 9 (pickInitialState 1)) @?=
+  (UpdatedStateComponents 0, pickInitialState 1)
 
 -- A keycode = 38, keysymbol = 0x41
-testOnKeyCodePress07 :: Assertion
-testOnKeyCodePress07 =
-  (onKeyCodePress
-     38
-     (((\s ->
-          s {sDepressedModifiers = setModifier (sDepressedModifiers s) Shift}) .
-       pickInitialState)
-        1)) @?=
-  (MkKeySymbol 0x41, UpdatedStateComponents 1, pickInitialState 1)
+testOnKeyPress07 :: Assertion
+testOnKeyPress07 =
+  let original =
+        (pickInitialState 1) {sDepressedModifiers = setModifier 0 Shift}
+      s = original
+      expected =
+        original
+        { sDepressedModifiers = setModifier 0 Shift
+        , sEffectiveModifiers = setModifier 0 Shift
+        }
+  in (onKeyPress 38 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- Meta_L keycode = 64, keysymbol = Meta_L = 0xffe7 = 65,511 ==> Mod3
-testOnKeyCodePress08 :: Assertion
-testOnKeyCodePress08 =
+testOnKeyPress08 :: Assertion
+testOnKeyPress08 =
   let original = pickInitialState 1
       s = original
       expected =
@@ -165,12 +168,12 @@ testOnKeyCodePress08 =
         , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Mod3
         , sLatchedModifiers = setModifier (sLatchedModifiers s) Mod3
         }
-  in (onKeyCodePress 64 original) @?=
-     (XKB_KEY_Meta_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 64 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- Alt_L keycode = 108, keysymbol = Alt_L ==> Mod1
-testOnKeyCodePress09 :: Assertion
-testOnKeyCodePress09 =
+testOnKeyPress09 :: Assertion
+testOnKeyPress09 =
   let original = pickInitialState 1
       s = original
       expected =
@@ -179,12 +182,12 @@ testOnKeyCodePress09 =
         , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Mod1
         , sLatchedModifiers = setModifier (sLatchedModifiers s) Mod1
         }
-  in (onKeyCodePress 108 original) @?=
-     (XKB_KEY_Alt_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 108 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- Control_L keycode = 66, keysymbol = Control_L ==> Control
-testOnKeyCodePress10 :: Assertion
-testOnKeyCodePress10 =
+testOnKeyPress10 :: Assertion
+testOnKeyPress10 =
   let original = pickInitialState 1
       s = original
       expected =
@@ -193,12 +196,12 @@ testOnKeyCodePress10 =
         , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Control
         , sLatchedModifiers = setModifier (sLatchedModifiers s) Control
         }
-  in (onKeyCodePress 66 original) @?=
-     (XKB_KEY_Control_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 66 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
-testOnKeyCodePress11 :: Assertion
-testOnKeyCodePress11 =
+testOnKeyPress11 :: Assertion
+testOnKeyPress11 =
   let original = pickInitialState 1
       s = original
       expected =
@@ -207,26 +210,23 @@ testOnKeyCodePress11 =
         , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Shift
         , sLatchedModifiers = setModifier (sLatchedModifiers s) Shift
         }
-  in (onKeyCodePress 50 original) @?=
-     (XKB_KEY_Shift_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 50 original) @?=
+     (identifyStateChanges original expected, expected)
 
--- the Shift should not be released
+-- the depressed Shift should not be released as per the workflow in notes
+-- if there is just a latched Shift, it should be released
 -- Escape keycode 9, keysymbol 0xff1b
-testOnKeyCodeRelease01 :: Assertion
-testOnKeyCodeRelease01 =
+testOnKeyRelease01 :: Assertion
+testOnKeyRelease01 =
   let original =
         (pickInitialState 1) {sDepressedModifiers = setModifier 0 Shift}
-      expected =
-        (pickInitialState 1)
-        { sDepressedModifiers = setModifier 0 Shift
-        , sEffectiveModifiers = setModifier 0 Shift
-        }
-  in (onKeyCodeRelease 9 original) @?= (UpdatedStateComponents 0, expected)
+      expected = original {sEffectiveModifiers = setModifier 0 Shift}
+  in (onKeyRelease 9 original) @?= (UpdatedStateComponents 0, expected)
 
 -- the Shift should not be released
 -- A keycode 38, keysymbol 0x41
-testOnKeyCodeRelease02 :: Assertion
-testOnKeyCodeRelease02 =
+testOnKeyRelease02 :: Assertion
+testOnKeyRelease02 =
   let original =
         (pickInitialState 1) {sDepressedModifiers = setModifier 0 Shift}
       expected =
@@ -234,9 +234,20 @@ testOnKeyCodeRelease02 =
         { sDepressedModifiers = setModifier 0 Shift
         , sEffectiveModifiers = setModifier 0 Shift
         }
-  in (onKeyCodeRelease 38 original) @?= (UpdatedStateComponents 0, expected)
+  in (onKeyRelease 38 original) @?= (UpdatedStateComponents 0, expected)
 
--- the Shift should be released
+-- the depressed Shift should not be released as per the workflow in notes
+-- if there is just a latched Shift, it should be released
+-- Escape keycode 9, keysymbol 0xff1b
+testOnKeyRelease03 :: Assertion
+testOnKeyRelease03 =
+  let original = (pickInitialState 1) {sLatchedModifiers = setModifier 0 Shift}
+      expected = pickInitialState 1
+      -- if there is just a latched Shift then it implies an Effective Shift
+      -- too, so both should be released
+  in (onKeyRelease 9 original) @?= (UpdatedStateComponents 0b1010, expected)
+
+-- the Shift should not be released
 -- A keycode 38, keysymbol 0x41
 testShiftLevelAlphabet01 :: Assertion
 testShiftLevelAlphabet01 =
@@ -246,9 +257,9 @@ testShiftLevelAlphabet01 =
         , sEffectiveModifiers = setModifier 0 Shift
         , sLatchedModifiers = setModifier 0 Shift
         }
-      expected = pickInitialState 1
-  in (onKeyCodePress 38 original) @?=
-     (MkKeySymbol 0x41, identifyStateChanges original expected, expected)
+      expected = original
+  in (onKeyPress 38 original) @?=
+     (identifyStateChanges original expected, expected)
 
 testShiftLevelAlphabet02 :: Assertion
 testShiftLevelAlphabet02 =
@@ -258,9 +269,9 @@ testShiftLevelAlphabet02 =
         , sEffectiveModifiers = setModifier 0 Shift
         , sLatchedModifiers = setModifier 0 Shift
         }
-      expected = pickInitialState 1
-  in (onKeyCodePress 38 original) @?=
-     (XKB_KEY_A, identifyStateChanges original expected, expected)
+      expected = original
+  in (onKeyPress 38 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- shift twice should become locked with sticky on
 -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
@@ -280,17 +291,16 @@ testStickyLocking01 =
         , sLatchedModifiers = 0
         , sLockedModifiers = setModifier 0 Shift
         }
-  in (onKeyCodePress 50 original) @?=
-     (XKB_KEY_Shift_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 50 original) @?=
+     (identifyStateChanges original expected, expected)
 
--- locked shift stays there with sticky on
+-- locked shift loses lock with sticky on
 -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
 testStickyLocking02 :: Assertion
 testStickyLocking02 =
   let original =
         (pickInitialState 1)
-        { sDepressedModifiers = setModifier 0 Shift
-        , sEffectiveModifiers = setModifier 0 Shift
+        { sEffectiveModifiers = setModifier 0 Shift
         , sLockedModifiers = setModifier 0 Shift
         }
       s = original
@@ -298,10 +308,10 @@ testStickyLocking02 =
         original
         { sDepressedModifiers = setModifier 0 Shift
         , sEffectiveModifiers = setModifier 0 Shift
-        , sLockedModifiers = setModifier 0 Shift
+        , sLockedModifiers = clearModifier 0 Shift
         }
-  in (onKeyCodePress 50 original) @?=
-     (XKB_KEY_Shift_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 50 original) @?=
+     (identifyStateChanges original expected, expected)
 
 -- locked shift stays there with sticky on even when key released
 -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
@@ -309,18 +319,16 @@ testStickyLocking03 :: Assertion
 testStickyLocking03 =
   let original =
         (pickInitialState 1)
-        { sDepressedModifiers = setModifier 0 Shift
-        , sEffectiveModifiers = setModifier 0 Shift
+        { sEffectiveModifiers = setModifier 0 Shift
         , sLockedModifiers = setModifier 0 Shift
         }
       s = original
       expected =
         original
-        { sDepressedModifiers = setModifier 0 Shift
-        , sEffectiveModifiers = setModifier 0 Shift
+        { sEffectiveModifiers = setModifier 0 Shift
         , sLockedModifiers = setModifier 0 Shift
         }
-  in (onKeyCodeRelease 50 original) @?=
+  in (onKeyRelease 50 original) @?=
      (identifyStateChanges original expected, expected)
 
 -- latched shift stays there with sticky on even when key released
@@ -335,50 +343,43 @@ testStickyLocking04 =
         }
       s = original
       expected =
-        original
-        { sDepressedModifiers = setModifier 0 Shift
-        , sEffectiveModifiers = setModifier 0 Shift
+        (pickInitialState 1)
+        { sEffectiveModifiers = setModifier 0 Shift
         , sLatchedModifiers = setModifier 0 Shift
         }
-  in (onKeyCodeRelease 50 original) @?=
+  in (onKeyRelease 50 original) @?=
      (identifyStateChanges original expected, expected)
 
--- shift twice should just be latched with sticky off
+-- shift twice should just be depressed with sticky off
 testNonStickyLatching01 :: Assertion
 testNonStickyLatching01 =
   let original =
         (pickInitialState 0)
         { sDepressedModifiers = setModifier 0 Shift
         , sEffectiveModifiers = setModifier 0 Shift
-        , sLatchedModifiers = setModifier 0 Shift
         }
       s = original
       expected =
         original
         { sDepressedModifiers = setModifier 0 Shift
         , sEffectiveModifiers = setModifier 0 Shift
-        , sLatchedModifiers = setModifier 0 Shift
         }
-  in (onKeyCodePress 50 original) @?=
-     (XKB_KEY_Shift_L, identifyStateChanges original expected, expected)
+  in (onKeyPress 50 original) @?=
+     (identifyStateChanges original expected, expected)
 
--- shift release should release the latch with sticky off
+-- shift release should release the depressed and effective with sticky off
 testNonStickyLatching02 :: Assertion
 testNonStickyLatching02 =
   let original =
         (pickInitialState 0)
         { sDepressedModifiers = setModifier 0 Shift
         , sEffectiveModifiers = setModifier 0 Shift
-        , sLatchedModifiers = setModifier 0 Shift
-        , sLockedModifiers = setModifier 0 Shift
         }
       s = original
       expected =
         original
         { sDepressedModifiers = 0
         , sEffectiveModifiers = 0
-        , sLatchedModifiers = 0
-        , sLockedModifiers = 0
         }
-  in (onKeyCodeRelease 50 original) @?=
+  in (onKeyRelease 50 original) @?=
      (identifyStateChanges original expected, expected)
