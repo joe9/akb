@@ -38,7 +38,7 @@ TODO: Write usage instructions
 
 ## History
 
-TODO: Write history
+Felt that it would be easier to roll this out than trying to add the sticky functionality to libxkbcommon. Also, it was frustrating working with xkb sometime ago, as the xkb files are quasi-programs. xkb is a parser, interpreter and a lookup function. It is easier to encode the keycode->keysym into the program as a lookup table and use functions to configure how you want xkb to use that lookup table (which is what skb does).
 
 ## Credits
 
