@@ -57,19 +57,19 @@ whatToDoWithKeySymbol XKB_KEY_Shift_L =
        XKB_KEY_Shift_L
        Shift
        (pressModifier XKB_KEY_Shift_L Shift)
-       (releaseModifier XKB_KEY_Control_L Control))
+       (releaseModifier XKB_KEY_Shift_L Shift))
 whatToDoWithKeySymbol XKB_KEY_Alt_L =
   Left
     (ModifierMap
        XKB_KEY_Alt_L
        Mod1
        (pressModifier XKB_KEY_Alt_L Mod1)
-       (releaseModifier XKB_KEY_Control_L Control))
+       (releaseModifier XKB_KEY_Alt_L Mod1))
 whatToDoWithKeySymbol XKB_KEY_Meta_L =
   Left
     (ModifierMap
        XKB_KEY_Meta_L
        Mod3
        (pressModifier XKB_KEY_Meta_L Mod3)
-       (releaseModifier XKB_KEY_Control_L Control))
+       (releaseModifier XKB_KEY_Meta_L Mod3))
 whatToDoWithKeySymbol k = Right k

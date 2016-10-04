@@ -364,7 +364,11 @@ pressModifier _ m state =
 
 releaseModifier :: KeySymbol -> Modifier -> State -> State
 releaseModifier _ m state =
-  state {sDepressedModifiers = clearModifier (sDepressedModifiers state) m}
+  state
+  { sDepressedModifiers = clearModifier (sDepressedModifiers state) m
+  , sLatchedModifiers = clearModifier (sLatchedModifiers state) m
+  , sLockedModifiers = clearModifier (sLockedModifiers state) m
+  }
 
 updateModifiers :: KeySymbol -> Modifier -> State -> State
 updateModifiers _ m state =
