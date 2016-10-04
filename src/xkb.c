@@ -184,7 +184,7 @@ xkb_keysym_t
 xkb_state_key_get_one_sym (struct xkb_state * state, xkb_keycode_t key)
 {
    printf("xkb_state_key_get_one_sym\n");
-   return skb_state_key_get_one_sym (state->hs_stable_state_ptr, key + EVDEV_OFFSET);
+   return skb_state_key_get_one_sym (state->hs_stable_state_ptr, key);
 }
 
 enum xkb_state_component
@@ -210,7 +210,7 @@ xkb_state_update_key (struct xkb_state *state, xkb_keycode_t key,
 		      enum xkb_key_direction direction)
 {
    printf("xkb_state_update_key\n");
-      return skb_state_update_key (state->hs_stable_state_ptr, key + EVDEV_OFFSET, direction);
+   return skb_state_update_key (state->hs_stable_state_ptr, key, direction);
 }
 
 xkb_mod_mask_t
@@ -235,14 +235,14 @@ uint32_t
 xkb_state_key_get_utf32 (struct xkb_state * state, xkb_keycode_t key)
 {
       printf("xkb_state_key_get_utf32\n");
-      return skb_state_key_get_utf (state->hs_stable_state_ptr, key + EVDEV_OFFSET);
+      return skb_state_key_get_utf (state->hs_stable_state_ptr, key);
 }
 
 int
 xkb_keymap_key_repeats (struct xkb_keymap *keymap, xkb_keycode_t key)
 {
       printf("xkb_keymap_key_repeats\n");
-      return skb_keymap_key_repeats (keymap->initial_state_index, key + EVDEV_OFFSET);
+      return skb_keymap_key_repeats (keymap->initial_state_index, key);
 }
 
 xkb_mod_index_t
@@ -273,10 +273,10 @@ char *
 xkb_keymap_get_as_string(struct xkb_keymap *keymap,
 			 enum xkb_keymap_format format){
  printf("xkb_keymap_get_as_string entered\n");
-    /*    from http://stackoverflow.com/a/1775487 */
-    size_t needed = snprintf(NULL, 0, "%i", keymap->initial_state_index);
-    char  *buffer = malloc(needed+1);
-    sprintf(buffer, "%i", keymap->initial_state_index);
+ /*    from http://stackoverflow.com/a/1775487 */
+ size_t needed = snprintf(NULL, 0, "%i", keymap->initial_state_index);
+ char  *buffer = malloc(needed+1);
+ sprintf(buffer, "%i", keymap->initial_state_index);
  printf("xkb_keymap_get_as_string exited\n");
-	 return buffer;
+ return buffer;
 }
