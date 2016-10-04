@@ -29,11 +29,12 @@ skb_state_new i = do
 
 skb_state_key_get_one_sym :: StablePtr StateIORef -> KeyCode -> IO Word32
 skb_state_key_get_one_sym ptr keycode =
+  putStrLn ( "skb_state_key_get_one_sym: keycode is " ++ show keycode) >>
   withState
     ptr
     (\state ->
-       let (keySym, _, updatedState) = onKeyCode keycode state
-       in (unKeySymbol keySym, updatedState))
+       let keySym = lookupKeyCode keycode state
+       in (unKeySymbol keySym, state))
 
 withState :: StablePtr StateIORef -> (State -> (a, State)) -> IO a
 withState ptr f = do
@@ -61,16 +62,18 @@ skb_state_update_key
   -> IO Word32 -- ^UpdatedStateComponents
 skb_state_update_key ptr keycode 0 -- Released
  =
+  putStrLn ( "skb_state_update_key: keycode is " ++ show keycode) >>
   withState
     ptr
-    ((\(UpdatedStateComponents f, s) -> (f, s)) . onKeyCodeRelease keycode)
+    ((\(UpdatedStateComponents f, s) -> (f, s)) . onKeyRelease keycode)
 skb_state_update_key ptr keycode 1 -- Pressed
  =
+  putStrLn ( "skb_state_update_key: keycode is " ++ show keycode) >>
   withState
     ptr
     (\state ->
-       let (_, UpdatedStateComponents sc, updatedState) =
-             onKeyCodePress keycode state
+       let (UpdatedStateComponents sc, updatedState) =
+             onKeyPress keycode state
        in (sc, updatedState))
 skb_state_update_key _ _ _ = return 0
 

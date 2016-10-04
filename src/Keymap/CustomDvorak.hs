@@ -31,6 +31,8 @@ customDvorakSticky =
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
   }
 
+-- instead of the below use evtest to get the actual keycodes
+-- http://unix.stackexchange.com/a/130762
 -- use the below commands:
 -- xkbcomp :0 /tmp/server-0.xkb
 --   get the keycodes to a file /tmp/keycodes.txt

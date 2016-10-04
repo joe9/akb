@@ -238,8 +238,8 @@ updateStateComponentBit False i = Just i
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
-onKeyCode :: KeyCode -> State -> (KeySymbol, UpdatedStateComponents, State)
-onKeyCode = onKeyCodePress
+lookupKeyCode :: KeyCode -> State -> KeySymbol
+lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
 
 onKeyCodePress :: KeyCode -> State -> (KeySymbol, UpdatedStateComponents, State)
 onKeyCodePress keycode state =
@@ -255,6 +255,21 @@ onKeyCodeRelease keycode state =
        updatedEffectivesState
   where
     f k s = onKeyCodeEvent stateChangeOnKeyRelease s k s
+
+onKeyPress :: KeyCode -> State -> (UpdatedStateComponents, State)
+onKeyPress keycode state =
+  ((\s -> (identifyStateChanges state s, s)) . f keycode)
+    (updateEffectives state)
+  where
+    f k s = onKeyCodeEvent stateChangeOnPress s k s
+
+onKeyRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
+onKeyRelease keycode state =
+  let updatedEffectivesState = updateEffectives state
+  in ((\ns -> (identifyStateChanges updatedEffectivesState ns, ns)) . f keycode)
+       updatedEffectivesState
+  where
+    f k s = onKeyCodeEvent stateChangeOnRelease s k s
 
 onKeyCodeEvent :: (State -> KeySymbol -> a) -> a -> KeyCode -> State -> a
 onKeyCodeEvent f defaultValue keycode state =
@@ -374,20 +389,40 @@ updateModifiers :: KeySymbol -> Modifier -> State -> State
 updateModifiers _ m state =
   state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
 
+stateChangeOnPress :: State -> KeySymbol -> State
+stateChangeOnPress state keysymbol =
+  case sOnKeyEvent state keysymbol of
+    Left (ModifierMap _ modifier onPressFunction _)
+    -- not consuming modifiers when a modifier is the result, bug or feature?
+     ->
+      (updateEffectives . updateDepresseds modifier . onPressFunction) state
+    Right _ -> state
+
+stateChangeOnRelease :: State -> KeySymbol -> State
+stateChangeOnRelease state keysymbol =
+  case sOnKeyEvent state keysymbol of
+    Left (ModifierMap _ _ _ onReleaseFunction) ->
+      (updateEffectives . onReleaseFunction) state
+    Right _ ->
+      (updateEffectives .
+         clearStickyPresses . -- This is how it is working now
+         clearLatches)
+          state
+
 stateChangeOnKeyPress :: State -> KeySymbol -> (KeySymbol, State)
 stateChangeOnKeyPress s keysymbol =
   case sOnKeyEvent s keysymbol of
+    Left (ModifierMap _ modifier onPressFunction _)
+    -- not consuming modifiers when a modifier is the result, bug or feature?
+     ->
+      ( keysymbol
+      , (updateEffectives . updateDepresseds modifier . onPressFunction) s)
     Right ks ->
       ( ks
       , (updateEffectives .
          clearStickyPresses . -- This is how it is working now
          clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
           s)
-    Left (ModifierMap _ modifier onPressFunction _)
-    -- not consuming modifiers when a modifier is the result, bug or feature?
-     ->
-      ( keysymbol
-      , (updateEffectives . updateDepresseds modifier . onPressFunction) s)
 
 stateChangeOnKeyRelease :: State -> KeySymbol -> State
 stateChangeOnKeyRelease s keysymbol =

@@ -15,7 +15,7 @@ import BitMask
 main :: IO ()
 main = do
   TIO.putStrLn
-    (showKeySymbol ((\(f,_,_) -> f) (getKeySymbol (pickInitialState 1) 10)))
+    (showKeySymbol ((getKeySymbol (pickInitialState 1) 10)))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
@@ -30,5 +30,5 @@ main = do
   print (fromBitMask 2 :: Maybe Modifier)
   print (fromBitMask 4 :: Maybe Modifier)
 
-getKeySymbol :: State -> KeyCode -> (KeySymbol, UpdatedStateComponents,State )
-getKeySymbol s k = onKeyCode k s
+getKeySymbol :: State -> KeyCode -> KeySymbol
+getKeySymbol s k = lookupKeyCode k s

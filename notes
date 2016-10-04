@@ -1,0 +1,40 @@
+<joe9> Cloudef: wlc_keyboard_request_key is the function the clients call to request a keysym, correct?
+<joe9> Cloudef: along with the modifiers.
+<Cloudef> clients don't interact with wlc at all
+<joe9> Cloudef: How do the clients lookup the keycode -> (keysym,modifiers)? Do they bind directly to libxkbcommon?
+<Cloudef> no, all they get is the information in wl_keyboard protocol
+<Cloudef> wlc_keyboard_request_key sends callback to window manager that uses libwlc
+<joe9> wl_keyboard::modifiers - modifier and group state -- is the function in the wayland spec.
+<joe9>       wl_keyboard_send_key(wr, serial, time, key, state);
+<joe9> is the function that wlc uses to send the keycode to example through libwayland.
+<joe9> (from what I understand)
+<Cloudef> I think you understand wrong
+<Cloudef> if you refer to example in wlc repository
+<joe9> ok, Thanks. let me go back to the example.
+<Cloudef> example in wlc repository is window manager, not client
+<joe9> oh, ok. I see that this keyboard_key(wlc_handle view, uint32_t time, const struct wlc_modifiers *modifiers, uint32_t key, enum wlc_key_state state)
+<joe9> function is the input_key_cb function.
+<Cloudef> yes, and wlc_keyboard_request_key sends the callback for that
+<joe9> ok, Thanks.
+<joe9> Cloudef: Sorry for the bother. Please correct me if any of this is incorrect? seat.c:seat_handle_key handles the key received from libinput. On a key, it tells libxkb
+       that a key event (up or down) was received, updates the internal state (wlc_keyboard) with the new keycode received. Then it reads the modifiers from libxkbcommon (which
+       might have changed due to the previous key event). Then, wlc looks up the keysym with NULL
+<joe9> modifiers. and, passes the keysym (looked up with NULL modifiers) and the earlier modifiers that it had read using wlc_keyboard_request_key
+<Cloudef> joe9: wlc should not look up keysym at all
+<joe9> this call in seat_handle_key --   uint32_t keysym = wlc_keyboard_get_keysym_for_key_ptr(&seat->keyboard, ev->key.code, &mods);
+<Cloudef> expect for TTY switch I guess
+<Cloudef> that's for tty switching
+<joe9> oh, ok.
+<joe9> wlc sends the key event to libxkb, reads the modifiers, and sends the keycode + modifiers using wlc_keyboard_request_key -- correct?
+<Cloudef> yeah
+<joe9> When clients want the keycode -> keysym translation, do you know how libwayland does it? or, I can check out the libwayland source. Is it the same behaviour as how
+       example.c does it? (   const uint32_t sym = wlc_keyboard_get_keysym_for_key(key, NULL);)
+<joe9> or, does libwayland maintain a state of keycode and modifiers that we sent it with  (if (!wlc_keyboard_request_key(&seat->keyboard, ev->time, &seat->keyboard.modifiers,
+       ev->key.code, ev->key.state))) and pass it along as requested by the client? I noticed that wl_keyboard has 2 keyboard events: wl_keyboard::key - key event,
+       wl_keyboard::modifiers - modifier and group state . So, I figure that it is storing this.
+<Cloudef> joe9: clients use xkb
+<joe9> Cloudef: oh, ok. Thanks.
+<joe9> Cloudef: With key repeats, the clients just do not get a Release event, correct? If the client has keyboard focus and do not get a release event, it is assumed to be a
+       key repeat?  [11:01]
+<Cloudef> clients decide that themself  [11:02]
+<Cloudef> now sleep
