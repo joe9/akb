@@ -28,6 +28,7 @@ library
                      , KeySymbolDefinitions
                      , KeySymbolToUTF
                      , State
+                     , OnKeyEvent
                      , Keymap.CustomDvorak
   build-tools:       hsc2hs
   build-depends:       base

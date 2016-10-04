@@ -92,6 +92,7 @@ testIdentifyStateChanges10 =
 testOnKeyCodePress01 :: Assertion
 testOnKeyCodePress01 = (onKeyCodePress 38 def) @?= (MkKeySymbol 0, UpdatedStateComponents 0, def)
 
+-- using the CustomDvorak keymap
 testOnKeyCodePress02 :: Assertion
 testOnKeyCodePress02 =
   (onKeyCodePress 38 (pickInitialState 1)) @?=
@@ -120,7 +121,7 @@ testOnKeyCodePress06 =
   (onKeyCodePress 9 (pickInitialState 1)) @?=
   (MkKeySymbol 0xff1b, UpdatedStateComponents 0, pickInitialState 1)
 
--- k keycode = 38, keysymbol = 0x41
+-- A keycode = 38, keysymbol = 0x41
 testOnKeyCodePress07 :: Assertion
 testOnKeyCodePress07 =
   (onKeyCodePress
@@ -206,4 +207,17 @@ testOnKeyCodeRelease02 =
                     { sDepressedModifiers = setModifier 0 Shift
                     , sEffectiveModifiers = setModifier 0 Shift
                     }
-  in (onKeyCodeRelease 9 original) @?= (UpdatedStateComponents 0, expected)
+  in (onKeyCodeRelease 38 original) @?= (UpdatedStateComponents 0, expected)
+
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+testShiftLevelAlphabet :: Assertion
+testShiftLevelAlphabet =
+  let original = pickInitialState 1
+      s = original
+      expected = original
+                    { sDepressedModifiers = setModifier (sDepressedModifiers s) Shift
+                    , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Shift
+                    , sLatchedModifiers   = setModifier (sLatchedModifiers s) Shift
+                    }
+  in (onKeyCodePress 50 original) @?=
+     (XKB_KEY_Shift_L, identifyStateChanges original expected, expected)

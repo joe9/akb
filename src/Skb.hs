@@ -47,8 +47,9 @@ skb_state_unref :: StablePtr StateIORef -> IO ()
 skb_state_unref = freeStablePtr
 
 pickInitialState :: CInt -> State
-pickInitialState 0 = def
-pickInitialState _ = customDvorak
+pickInitialState 0 = customDvorak
+pickInitialState 1 = customDvorakSticky
+pickInitialState _ = def
 
 -- skb_state_update_key :: StablePtr StateIORef -> KeyCode -> CKeyDirection -> IO StateComponent
 -- the StateComponent is not being used by wlc, so why bother

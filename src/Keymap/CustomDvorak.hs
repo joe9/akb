@@ -1,59 +1,35 @@
 module Keymap.CustomDvorak
   ( customDvorakKeymap
   , customDvorak
+  , customDvorakSticky
   ) where
 
 import           Data.Default
 import qualified Data.Vector  as V
-import           Modifiers
-import           State
 
 --
 import KeySymbolDefinitions
+import Modifiers
+import OnKeyEvent
+import State
 
 customDvorak :: State
 customDvorak =
   def
   { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
-  , sOnKey = customDvorakOnKey
+  , sOnKeyEvent = whatToDoWithKeySymbol
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
   }
 
-customDvorakOnKey :: KeySymbol -> Either ModifierMap KeySymbol
-customDvorakOnKey XKB_KEY_Control_L =
-  Left
-    (ModifierMap
-       XKB_KEY_Control_L
-       Control
-       (stickyPressModifier XKB_KEY_Control_L Control)
-       id -- nothing to do in sticky mode for release
-    )
-customDvorakOnKey XKB_KEY_Shift_L =
-  Left
-    (ModifierMap
-       XKB_KEY_Shift_L
-       Shift
-       (stickyPressModifier XKB_KEY_Shift_L Shift)
-       id -- nothing to do in sticky mode for release
-    )
-customDvorakOnKey XKB_KEY_Alt_L =
-  Left
-    (ModifierMap
-       XKB_KEY_Alt_L
-       Mod1
-       (stickyPressModifier XKB_KEY_Alt_L Mod1)
-       id -- nothing to do in sticky mode for release
-    )
-customDvorakOnKey XKB_KEY_Meta_L =
-  Left
-    (ModifierMap
-       XKB_KEY_Meta_L
-       Mod3
-       (stickyPressModifier XKB_KEY_Meta_L Mod3)
-       id -- nothing to do in sticky mode for release
-    )
-customDvorakOnKey k = Right k
+customDvorakSticky :: State
+customDvorakSticky =
+  def
+  { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
+  , sOnKeyEvent = stickyWhatToDoWithKeySymbol
+  , sCalculateLevel = shiftIsLevelTwoCalculateLevel
+  , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
+  }
 
 -- use the below commands:
 -- xkbcomp :0 /tmp/server-0.xkb

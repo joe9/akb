@@ -1,16 +1,17 @@
 module State where
 
-import Data.Bits
-import Data.Maybe
-import Data.Default
-import qualified Data.Vector as V
-import Data.Word
-import Text.Groom
+import           Data.Bits
+import           Data.Default
+import           Data.Maybe
+import qualified Data.Vector  as V
+import           Data.Word
+import           Text.Groom
+
 --
+import BitMask
 import KeySymbolDefinitions
 import KeySymbolToUTF
 import Modifiers
-import BitMask
 
 -- /** Specifies the direction of the key (press / release). */
 -- enum xkb_key_direction {
@@ -23,14 +24,16 @@ data KeyDirection
   deriving (Enum)
 
 -- same as xkb_state_component
-newtype UpdatedStateComponents = UpdatedStateComponents {unUpdatedStateComponents  :: Word32}
-  deriving Eq
+newtype UpdatedStateComponents = UpdatedStateComponents
+  { unUpdatedStateComponents :: Word32
+  } deriving (Eq)
 
 instance Show UpdatedStateComponents where
-  show = groom . (fromBitMask :: Word32 -> [StateComponentBit]) . unUpdatedStateComponents
+  show =
+    groom .
+    (fromBitMask :: Word32 -> [StateComponentBit]) . unUpdatedStateComponents
 
 -- type StateComponents = Word32
-
 data StateComponentBit
   = ModifiersDepressed -- ^(1 << 0)
   | ModifiersLatched -- ^(1 << 1)
@@ -65,7 +68,6 @@ instance ToBitMask StateComponentBit
 -- Layout == Group
 -- stateToStateComponent :: State -> UpdatedStateComponents
 -- stateToStateComponent _ = setBit 0 (fromEnum GroupEffective)
-
 data GroupOnOverflow
   = Clamp
   | Wrap
@@ -76,9 +78,9 @@ data Group
            (V.Vector Group)
 
 data ModifierMap = ModifierMap
-  { mKeySymbol :: KeySymbol
-  , mModifier :: Modifier
-  , mWhenPressed :: State -> State
+  { mKeySymbol    :: KeySymbol
+  , mModifier     :: Modifier
+  , mWhenPressed  :: State -> State
   , mWhenReleased :: State -> State
   }
 
@@ -148,7 +150,7 @@ type Level = Int
 -- TODO could change this to an unboxed vector for performance
 data State = State
   { sKeymap :: V.Vector Group
-  , sOnKey :: KeySymbol -> Either ModifierMap KeySymbol
+  , sOnKeyEvent :: KeySymbol -> Either ModifierMap KeySymbol
   , sCalculateLevel :: Modifiers -> Level -- if there is a level change
     -- if there is a level change
     -- that changes state, for example,
@@ -181,8 +183,10 @@ data State = State
 
 instance Eq State where
   (State _ _ _ _ _ eg dg lag locg em dm lam lom) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb) =
-    eg == egb && dg == dgb && lag == lagb && locg == locgb &&
-    em == emb && dm == dmb && lam == lamb && lom == lomb
+    eg == egb &&
+    dg == dgb &&
+    lag == lagb &&
+    locg == locgb && em == emb && dm == dmb && lam == lamb && lom == lomb
 
 instance Default State where
   def =
@@ -203,34 +207,33 @@ instance Default State where
 
 identifyStateChanges :: State -> State -> UpdatedStateComponents
 identifyStateChanges old new =
-  ( UpdatedStateComponents .
-    toBitMask .
-    catMaybes)
-        [updateStateComponentBit
-            (sDepressedGroup old == sDepressedGroup new)
-            GroupDepressed ,
-        updateStateComponentBit
-            (sDepressedModifiers old == sDepressedModifiers new)
-            ModifiersDepressed ,
-        updateStateComponentBit (sLatchedGroup old == sLatchedGroup new) GroupLatched ,
-        updateStateComponentBit
-            (sLatchedModifiers old == sLatchedModifiers new)
-            ModifiersLatched ,
-        updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked ,
-        updateStateComponentBit
-            (sLockedModifiers old == sLockedModifiers new)
-            ModifiersLocked ,
-        updateStateComponentBit
-            (sEffectiveGroup old == sEffectiveGroup new)
-            GroupEffective ,
-        updateStateComponentBit
-            (sEffectiveModifiers old == sEffectiveModifiers new)
-            ModifiersEffective]
+  (UpdatedStateComponents . toBitMask . catMaybes)
+    [ updateStateComponentBit
+        (sDepressedGroup old == sDepressedGroup new)
+        GroupDepressed
+    , updateStateComponentBit
+        (sDepressedModifiers old == sDepressedModifiers new)
+        ModifiersDepressed
+    , updateStateComponentBit
+        (sLatchedGroup old == sLatchedGroup new)
+        GroupLatched
+    , updateStateComponentBit
+        (sLatchedModifiers old == sLatchedModifiers new)
+        ModifiersLatched
+    , updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked
+    , updateStateComponentBit
+        (sLockedModifiers old == sLockedModifiers new)
+        ModifiersLocked
+    , updateStateComponentBit
+        (sEffectiveGroup old == sEffectiveGroup new)
+        GroupEffective
+    , updateStateComponentBit
+        (sEffectiveModifiers old == sEffectiveModifiers new)
+        ModifiersEffective
+    ]
 
-updateStateComponentBit :: Bool
-                        -> StateComponentBit
-                        -> Maybe StateComponentBit
-updateStateComponentBit True _ = Nothing
+updateStateComponentBit :: Bool -> StateComponentBit -> Maybe StateComponentBit
+updateStateComponentBit True _  = Nothing
 updateStateComponentBit False i = Just i
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
@@ -249,7 +252,7 @@ onKeyCodeRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
 onKeyCodeRelease keycode state =
   let updatedEffectivesState = updateEffectives state
   in ((\ns -> (identifyStateChanges updatedEffectivesState ns, ns)) . f keycode)
-     updatedEffectivesState
+       updatedEffectivesState
   where
     f k s = onKeyCodeEvent stateChangeOnKeyRelease s k s
 
@@ -272,10 +275,10 @@ findIfKeyRepeats = onKeyCodeEvent doesKeyRepeat True
 
 doesKeyRepeat :: State -> KeySymbol -> Bool
 doesKeyRepeat s keysymbol =
-  case sOnKey s keysymbol of
+  case sOnKeyEvent s keysymbol of
     Right _ -> True
     -- assuming all modifiers do not repeat
-    Left _ -> False
+    Left _  -> False
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -301,7 +304,7 @@ lookupGroup rawGroupIndex (Groups wrapType grps) =
     Nothing ->
       case wrapType of
         Clamp -> Just (V.last grps)
-        Wrap -> grps V.!? mod (V.length grps) (groupIndex + 1)
+        Wrap  -> grps V.!? mod (V.length grps) (groupIndex + 1)
   where
     groupIndex =
       if rawGroupIndex < 0
@@ -315,7 +318,7 @@ lookupFromGroup :: Level -> Group -> Maybe KeySymbol
 lookupFromGroup level (Group v) =
   case v V.!? level of
     jk@(Just _) -> jk
-    Nothing -> v V.!? 0 -- if there is only 1 level
+    Nothing     -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
 onKey :: KeySymbol -> Either ModifierMap KeySymbol
@@ -369,7 +372,7 @@ updateModifiers _ m state =
 
 stateChangeOnKeyPress :: State -> KeySymbol -> (KeySymbol, State)
 stateChangeOnKeyPress s keysymbol =
-  case sOnKey s keysymbol of
+  case sOnKeyEvent s keysymbol of
     Right ks ->
       ( ks
       , (updateEffectives .
@@ -384,7 +387,7 @@ stateChangeOnKeyPress s keysymbol =
 
 stateChangeOnKeyRelease :: State -> KeySymbol -> State
 stateChangeOnKeyRelease s keysymbol =
-  case sOnKey s keysymbol of
+  case sOnKeyEvent s keysymbol of
     Right _ -> s
     Left (ModifierMap _ _ _ onReleaseFunction) ->
       (updateEffectives . onReleaseFunction) s
@@ -423,35 +426,30 @@ stateComponent :: State -> UpdatedStateComponents -> Word32
 stateComponent state (UpdatedStateComponents requestedStateComponent)
   | isInBitMask requestedStateComponent ModifiersEffective =
     sEffectiveModifiers state
-  | isInBitMask requestedStateComponent  GroupEffective =
-    sEffectiveGroup state
-  | isInBitMask requestedStateComponent  ModifiersDepressed =
+  | isInBitMask requestedStateComponent GroupEffective = sEffectiveGroup state
+  | isInBitMask requestedStateComponent ModifiersDepressed =
     sDepressedModifiers state
-  | isInBitMask requestedStateComponent  ModifiersLatched =
+  | isInBitMask requestedStateComponent ModifiersLatched =
     sLatchedModifiers state
-  | isInBitMask requestedStateComponent  ModifiersLocked =
-    sLockedModifiers state
-  | isInBitMask requestedStateComponent  GroupDepressed =
-    sDepressedGroup state
-  | isInBitMask requestedStateComponent  GroupLatched =
-    sLatchedGroup state
-  | isInBitMask requestedStateComponent  GroupLocked = sLockedGroup state
+  | isInBitMask requestedStateComponent ModifiersLocked = sLockedModifiers state
+  | isInBitMask requestedStateComponent GroupDepressed = sDepressedGroup state
+  | isInBitMask requestedStateComponent GroupLatched = sLatchedGroup state
+  | isInBitMask requestedStateComponent GroupLocked = sLockedGroup state
   | otherwise = 0
 
 -- might have to add this as a field to State and use lens to avoid
 -- the deep nesting code
 -- convenience data type to show State data
 data ShowState = ShowState
-  {
-    ssEffectiveGroup :: !Word32 -- ^ group index is mostly 0 -- (first group)
-  , ssDepressedGroup :: !Word32 -- ^keys that are physically or logically down
-  , ssLatchedGroup :: !Word32
-  , ssLockedGroup :: !Word32
+  { ssEffectiveGroup     :: !Word32 -- ^ group index is mostly 0 -- (first group)
+  , ssDepressedGroup     :: !Word32 -- ^keys that are physically or logically down
+  , ssLatchedGroup       :: !Word32
+  , ssLockedGroup        :: !Word32
   , ssEffectiveModifiers :: ![Modifier]
   , ssDepressedModifiers :: ![Modifier] -- ^modifiers that are physically or logically down
-  , ssLatchedModifiers :: ![Modifier]
-  , ssLockedModifiers :: ![Modifier]
-  } deriving Show
+  , ssLatchedModifiers   :: ![Modifier]
+  , ssLockedModifiers    :: ![Modifier]
+  } deriving (Show)
 
 stateToShowState :: State -> ShowState
 stateToShowState state =
