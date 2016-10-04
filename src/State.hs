@@ -81,11 +81,10 @@ data ModifierMap = ModifierMap
   { mKeySymbol    :: KeySymbol
   , mModifier     :: Modifier
   , mWhenPressed  :: State -> State
-  , mWhenReleased :: State -> State
   }
 
 instance Eq ModifierMap where
-  (ModifierMap k t _ _) == (ModifierMap k1 t1 _ _) = (k == k1) && (t == t1)
+  (ModifierMap k t _) == (ModifierMap k1 t1 _) = (k == k1) && (t == t1)
 
 type KeyCode = Word32
 
@@ -241,21 +240,6 @@ updateStateComponentBit False i = Just i
 lookupKeyCode :: KeyCode -> State -> KeySymbol
 lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
 
-onKeyCodePress :: KeyCode -> State -> (KeySymbol, UpdatedStateComponents, State)
-onKeyCodePress keycode state =
-  ((\(k, s) -> (k, identifyStateChanges state s, s)) . f keycode)
-    (updateEffectives state)
-  where
-    f k s = onKeyCodeEvent stateChangeOnKeyPress (XKB_KEY_NoSymbol, s) k s
-
-onKeyCodeRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
-onKeyCodeRelease keycode state =
-  let updatedEffectivesState = updateEffectives state
-  in ((\ns -> (identifyStateChanges updatedEffectivesState ns, ns)) . f keycode)
-       updatedEffectivesState
-  where
-    f k s = onKeyCodeEvent stateChangeOnKeyRelease s k s
-
 onKeyPress :: KeyCode -> State -> (UpdatedStateComponents, State)
 onKeyPress keycode state =
   ((\s -> (identifyStateChanges state s, s)) . f keycode)
@@ -342,8 +326,7 @@ onKey XKB_KEY_Control_L =
     (ModifierMap
        XKB_KEY_Control_L
        Control
-       (pressModifier XKB_KEY_Control_L Control)
-       (releaseModifier XKB_KEY_Control_L Control))
+       (pressModifier XKB_KEY_Control_L Control))
 onKey k = Right k
 
 -- Pressing Esc when having any locked modifiers releases all
@@ -374,15 +357,12 @@ stickyPressModifier _ m state
     }
 
 pressModifier :: KeySymbol -> Modifier -> State -> State
-pressModifier _ m state =
-  state {sDepressedModifiers = setModifier (sDepressedModifiers state) m}
+pressModifier _ = updateDepresseds
 
 releaseModifier :: KeySymbol -> Modifier -> State -> State
 releaseModifier _ m state =
   state
   { sDepressedModifiers = clearModifier (sDepressedModifiers state) m
-  , sLatchedModifiers = clearModifier (sLatchedModifiers state) m
-  , sLockedModifiers = clearModifier (sLockedModifiers state) m
   }
 
 updateModifiers :: KeySymbol -> Modifier -> State -> State
@@ -392,8 +372,10 @@ updateModifiers _ m state =
 stateChangeOnPress :: State -> KeySymbol -> State
 stateChangeOnPress state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap _ modifier onPressFunction _)
+    Left (ModifierMap _ modifier onPressFunction)
     -- not consuming modifiers when a modifier is the result, bug or feature?
+    -- updateDepresseds does the same thing as the onPressFunction,
+    --   remove it?
      ->
       (updateEffectives . updateDepresseds modifier . onPressFunction) state
     Right _ -> state
@@ -401,35 +383,13 @@ stateChangeOnPress state keysymbol =
 stateChangeOnRelease :: State -> KeySymbol -> State
 stateChangeOnRelease state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap _ _ _ onReleaseFunction) ->
-      (updateEffectives . onReleaseFunction) state
+    Left (ModifierMap ks m _) ->
+      (updateEffectives . releaseModifier ks m) state
     Right _ ->
       (updateEffectives .
          clearStickyPresses . -- This is how it is working now
          clearLatches)
           state
-
-stateChangeOnKeyPress :: State -> KeySymbol -> (KeySymbol, State)
-stateChangeOnKeyPress s keysymbol =
-  case sOnKeyEvent s keysymbol of
-    Left (ModifierMap _ modifier onPressFunction _)
-    -- not consuming modifiers when a modifier is the result, bug or feature?
-     ->
-      ( keysymbol
-      , (updateEffectives . updateDepresseds modifier . onPressFunction) s)
-    Right ks ->
-      ( ks
-      , (updateEffectives .
-         clearStickyPresses . -- This is how it is working now
-         clearLatches . sConsumeModifiersUsedForCalculatingLevel s)
-          s)
-
-stateChangeOnKeyRelease :: State -> KeySymbol -> State
-stateChangeOnKeyRelease s keysymbol =
-  case sOnKeyEvent s keysymbol of
-    Right _ -> s
-    Left (ModifierMap _ _ _ onReleaseFunction) ->
-      (updateEffectives . onReleaseFunction) s
 
 clearLatches :: State -> State
 clearLatches state = state {sLatchedGroup = 0, sLatchedModifiers = 0}

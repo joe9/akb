@@ -38,3 +38,10 @@
        key repeat?  [11:01]
 <Cloudef> clients decide that themself  [11:02]
 <Cloudef> now sleep
+
+based on the above conversation, changed the workflow to be:
+
+on any key press, skb will be notified and it updates the modifiers state, if needed. (skb_state_update_key)
+lookup a keysymbol using the keycode based on the current state (skb_state_get_one_sym)
+on any key release, skb will be notified and it updates the modifiers state, if needed. If it is a normal key, also releases the latched modifiers. (skb_state_update_key)
+
