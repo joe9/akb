@@ -45,3 +45,12 @@ on any key press, skb will be notified and it updates the modifiers state, if ne
 lookup a keysymbol using the keycode based on the current state (skb_state_get_one_sym)
 on any key release, skb will be notified and it updates the modifiers state, if needed. If it is a normal key, also releases the latched modifiers. (skb_state_update_key)
 
+----------------------------------------------------------------------------------------------------
+
+to find the keycodes
+http://unix.stackexchange.com/questions/130656/how-to-get-all-my-keys-to-send-keycodes
+
+----------------------------------------------------------------------------------------------------
+
+interesting project but have not had a chance to check it out:
+https://github.com/depp/keycode

@@ -1,6 +1,6 @@
 # skb
 
-Understandable non-backward-compatible alternative to libxkbcommon
+Understandable non-backward-compatible alternative to libxkbcommon with working Sticky keys.
 
 Use the src/Bindings/Xkbcomon.hsc to guide the Haskell FFI development
 
