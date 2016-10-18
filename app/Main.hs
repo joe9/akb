@@ -5,12 +5,13 @@ module Main where
 import           Data.Maybe
 import qualified Data.Text.IO as TIO
 
+import                  Network.NineP.Server
+import BitMask
 --
-import Skb
+import Akb
 import Modifiers
 import State
 import KeySymbolDefinitions
-import BitMask
 
 main :: IO ()
 main = do
@@ -29,6 +30,9 @@ main = do
   print (fromBitMask 1 :: Maybe Modifier)
   print (fromBitMask 2 :: Maybe Modifier)
   print (fromBitMask 4 :: Maybe Modifier)
+  context <- initializeContext
+  run9PServer context
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = lookupKeyCode k s
+

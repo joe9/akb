@@ -1,4 +1,4 @@
-# skb
+# akb
 
 Understandable non-backward-compatible alternative to libxkbcommon with working Sticky keys.
 
