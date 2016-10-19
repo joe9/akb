@@ -23,31 +23,6 @@ data KeyDirection
   | Pressed -- Down
   deriving (Enum)
 
--- same as xkb_state_component
-newtype UpdatedStateComponents = UpdatedStateComponents
-  { unUpdatedStateComponents :: Word32
-  } deriving (Eq)
-
-instance Show UpdatedStateComponents where
-  show =
-    groom .
-    (fromBitMask :: Word32 -> [StateComponentBit]) . unUpdatedStateComponents
-
--- type StateComponents = Word32
-data StateComponentBit
-  = ModifiersDepressed -- ^(1 << 0)
-  | ModifiersLatched -- ^(1 << 1)
-  | ModifiersLocked -- ^(1 << 2)
-  | ModifiersEffective -- ^(1 << 3)
-  | GroupDepressed -- ^(1 << 4)
-  | GroupLatched -- ^(1 << 5)
-  | GroupLocked -- ^(1 << 6)
-  | GroupEffective -- ^(1 << 7)
-  | Leds -- ^(1 << 8)
-  deriving (Bounded, Enum, Eq, Show)
-
-instance ToBitMask StateComponentBit
-
 --     /** Depressed modifiers, i.e. a key is physically holding them. */
 --     /** Latched modifiers, i.e. will be unset after the next non-modifier
 --      *  key press. */
@@ -78,9 +53,9 @@ data Group
            (V.Vector Group)
 
 data ModifierMap = ModifierMap
-  { mKeySymbol    :: KeySymbol
-  , mModifier     :: Modifier
-  , mWhenPressed  :: State -> State
+  { mKeySymbol   :: KeySymbol
+  , mModifier    :: Modifier
+  , mWhenPressed :: State -> State
   }
 
 instance Eq ModifierMap where
@@ -204,54 +179,23 @@ instance Default State where
       0
       0
 
-identifyStateChanges :: State -> State -> UpdatedStateComponents
-identifyStateChanges old new =
-  (UpdatedStateComponents . toBitMask . catMaybes)
-    [ updateStateComponentBit
-        (sDepressedGroup old == sDepressedGroup new)
-        GroupDepressed
-    , updateStateComponentBit
-        (sDepressedModifiers old == sDepressedModifiers new)
-        ModifiersDepressed
-    , updateStateComponentBit
-        (sLatchedGroup old == sLatchedGroup new)
-        GroupLatched
-    , updateStateComponentBit
-        (sLatchedModifiers old == sLatchedModifiers new)
-        ModifiersLatched
-    , updateStateComponentBit (sLockedGroup old == sLockedGroup new) GroupLocked
-    , updateStateComponentBit
-        (sLockedModifiers old == sLockedModifiers new)
-        ModifiersLocked
-    , updateStateComponentBit
-        (sEffectiveGroup old == sEffectiveGroup new)
-        GroupEffective
-    , updateStateComponentBit
-        (sEffectiveModifiers old == sEffectiveModifiers new)
-        ModifiersEffective
-    ]
-
-updateStateComponentBit :: Bool -> StateComponentBit -> Maybe StateComponentBit
-updateStateComponentBit True _  = Nothing
-updateStateComponentBit False i = Just i
-
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
 lookupKeyCode :: KeyCode -> State -> KeySymbol
 lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
 
-onKeyPress :: KeyCode -> State -> (UpdatedStateComponents, State)
+onKeyPress :: KeyCode -> State -> ((KeySymbol, Modifiers), State)
 onKeyPress keycode state =
-  ((\s -> (identifyStateChanges state s, s)) . f keycode)
-    (updateEffectives state)
+  ((\(a, b) -> ((a, sEffectiveModifiers updatedEffectives), b)) . f keycode)
+    updatedEffectives
   where
-    f k s = onKeyCodeEvent stateChangeOnPress s k s
+    f k s = onKeyCodeEvent stateChangeOnPress (XKB_KEY_NoSymbol, s) k s
+    updatedEffectives = updateEffectives state
 
-onKeyRelease :: KeyCode -> State -> (UpdatedStateComponents, State)
+onKeyRelease :: KeyCode -> State -> State
 onKeyRelease keycode state =
   let updatedEffectivesState = updateEffectives state
-  in ((\ns -> (identifyStateChanges updatedEffectivesState ns, ns)) . f keycode)
-       updatedEffectivesState
+  in (f keycode) updatedEffectivesState
   where
     f k s = onKeyCodeEvent stateChangeOnRelease s k s
 
@@ -338,9 +282,11 @@ stickyPressModifier :: KeySymbol -> Modifier -> State -> State
 stickyPressModifier _ m state
   | testModifier (sLockedModifiers state) m
    -- if the key is already locked, unlock it
-   = state { sLockedModifiers = clearModifier (sLockedModifiers state) m
-           , sDepressedModifiers = setModifier (sDepressedModifiers state) m
-           }
+   =
+    state
+    { sLockedModifiers = clearModifier (sLockedModifiers state) m
+    , sDepressedModifiers = setModifier (sDepressedModifiers state) m
+    }
   | testModifier (sLatchedModifiers state) m
    -- if the key was previously latched, lock it and remove the latch
    -- but better to ensure that Depressed has it
@@ -362,41 +308,38 @@ pressModifier _ = updateDepresseds
 
 releaseModifier :: KeySymbol -> Modifier -> State -> State
 releaseModifier _ m state =
-  state
-  { sDepressedModifiers = clearModifier (sDepressedModifiers state) m
-  }
+  state {sDepressedModifiers = clearModifier (sDepressedModifiers state) m}
 
-stateChangeOnPress :: State -> KeySymbol -> State
+stateChangeOnPress :: State -> KeySymbol -> (KeySymbol, State)
 stateChangeOnPress state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap _ modifier onPressFunction)
+    Left (ModifierMap keysym modifier onPressFunction)
     -- not consuming modifiers when a modifier is the result, bug or feature?
     -- updateDepresseds does the same thing as the onPressFunction,
     --   remove it?
      ->
-      (updateEffectives . updateDepresseds modifier . onPressFunction) state
-    Right _ -> state
+      ( keysym
+      , (updateEffectives . updateDepresseds modifier . onPressFunction) state)
+    Right keysym -> (keysym, state)
 
 stateChangeOnRelease :: State -> KeySymbol -> State
 stateChangeOnRelease state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap ks m _) ->
-      (updateEffectives . releaseModifier ks m) state
-    Right _ ->
-      (updateEffectives .
-         resetLatchesToDepresseds)
-          state
+    Left (ModifierMap ks m _) -> (updateEffectives . releaseModifier ks m) state
+    Right _ -> (updateEffectives . resetLatchesToDepresseds) state
 
 -- if there is no latch set for a depressed modifier, do nothing -- when non-sticky
 -- when there is a latch set and it is a depressed modifier, do nothing
 -- when there is a latch set and it is not a depressed modifier, remove latch
 resetLatchesToDepresseds :: State -> State
-resetLatchesToDepresseds state
-  = state {sLatchedModifiers = sDepressedModifiers state .&. sLatchedModifiers state
-          ,sLatchedGroup = if sLatchedGroup state == sDepressedGroup state
-                              then sLatchedGroup state
-                              else 0
-          }
+resetLatchesToDepresseds state =
+  state
+  { sLatchedModifiers = sDepressedModifiers state .&. sLatchedModifiers state
+  , sLatchedGroup =
+      if sLatchedGroup state == sDepressedGroup state
+        then sLatchedGroup state
+        else 0
+  }
 
 updateEffectives :: State -> State
 updateEffectives state =
@@ -424,21 +367,6 @@ keyCodeAndGroupsToKeymap :: [(Int, Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
   in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
-
-stateComponent :: State -> UpdatedStateComponents -> Word32
-stateComponent state (UpdatedStateComponents requestedStateComponent)
-  | isInBitMask requestedStateComponent ModifiersEffective =
-    sEffectiveModifiers state
-  | isInBitMask requestedStateComponent GroupEffective = sEffectiveGroup state
-  | isInBitMask requestedStateComponent ModifiersDepressed =
-    sDepressedModifiers state
-  | isInBitMask requestedStateComponent ModifiersLatched =
-    sLatchedModifiers state
-  | isInBitMask requestedStateComponent ModifiersLocked = sLockedModifiers state
-  | isInBitMask requestedStateComponent GroupDepressed = sDepressedGroup state
-  | isInBitMask requestedStateComponent GroupLatched = sLatchedGroup state
-  | isInBitMask requestedStateComponent GroupLocked = sLockedGroup state
-  | otherwise = 0
 
 -- might have to add this as a field to State and use lens to avoid
 -- the deep nesting code

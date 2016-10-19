@@ -54,9 +54,14 @@ executable akb-exe
                      , akb
                      , text
                      , data-default
+                     , NineP
                      , NinePServer
                      , bitmask
                      , protolude
+                     , vector
+                     , groom
+                     , posix-paths
+                     , unix
   default-language:    Haskell2010
 
 test-suite akb-test
