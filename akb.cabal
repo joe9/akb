@@ -65,6 +65,9 @@ executable akb-exe
                      , bytestring
                      , attoparsec
                      , string-conversions
+                     , unordered-containers
+                     , stm
+                     , cereal
   default-language:    Haskell2010
 
 test-suite akb-test

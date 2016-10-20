@@ -186,7 +186,7 @@ lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
 
 onKeyPress :: KeyCode -> State -> ((KeySymbol, Modifiers), State)
 onKeyPress keycode state =
-  ((\(a, b) -> ((a, sEffectiveModifiers updatedEffectives), b)) . f keycode)
+  ((\(k, s) -> ((k, sEffectiveModifiers s), s)) . f keycode)
     updatedEffectives
   where
     f k s = onKeyCodeEvent stateChangeOnPress (XKB_KEY_NoSymbol, s) k s
