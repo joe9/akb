@@ -21,7 +21,7 @@ import Modifiers
 data KeyDirection
   = Released -- Up
   | Pressed -- Down
-  deriving (Enum)
+  deriving (Enum, Eq, Show)
 
 --     /** Depressed modifiers, i.e. a key is physically holding them. */
 --     /** Latched modifiers, i.e. will be unset after the next non-modifier
