@@ -8,21 +8,22 @@ import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString                  as BS
 import qualified Data.HashMap.Strict              as HashMap
 import           Data.Maybe
+import           Data.Default
 import           Data.Serialize
-import           Data.Serialize.Put
 import           Data.String.Conversions
 import qualified Data.Text.IO                     as TIO
 import qualified Data.Vector                      as V
-import           Data.Word
 import           GHC.Show
-import           Protolude                        hiding (State, show)
+import           Protolude                        hiding (State, show,
+                                                   state)
 import           System.Posix.ByteString.FilePath
 import           System.Posix.FilePath
 import           Text.Groom
 
-import           BitMask
-import           Data.NineP            hiding (Directory)
-import           Network.NineP.Context hiding (File)
+import BitMask
+
+import           Data.NineP
+import           Network.NineP.Context hiding (Directory, File)
 import qualified Network.NineP.Context as Context
 import           Network.NineP.Error
 import           Network.NineP.Server
@@ -51,44 +52,44 @@ main = do
   case parseOnly inputParser "10,Pressed" of
     Left e -> print e
     Right (Input kcode dir) -> print (keyEvent (pickInitialState 1) kcode dir)
+  let context = def {cFSItems = fsList}
+  run9PServer context
 
---   let context = initializeContext {cFSItems = fsList}
---   run9PServer context
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = lookupKeyCode k s
 
+-- TODO : add stAtime, stMtime, stUid, stGid and stMuid
 fsList :: V.Vector (FSItem Context)
 fsList =
   V.fromList
-    [ dir "/" -- 0
-    , file "/in" -- 1
-    , file "/out" -- 2
-    , dir "/modifiers/" -- 3
-    , dir "/modifiers/effective" -- 4
-    , file "/modifiers/effective/out" -- 5
-    , dir "/modifiers/depressed" -- 6
-    , file "/modifiers/depressed/out" -- 7
-    , dir "/modifiers/latched" -- 8
-    , file "/modifiers/latched/out" -- 9
-    , dir "/modifiers/locked" -- 10
-    , file "/modifiers/locked/out" -- 11
-    , dir "/group/" -- 12
-    , dir "/group/effective" -- 13
-    , file "/group/effective/out" -- 14
-    , dir "/group/depressed" -- 15
-    , file "/group/depressed/out" -- 16
-    , dir "/group/latched" -- 17
-    , file "/group/latched/out" -- 18
-    , dir "/group/locked" -- 19
-    , dir "/group/locked/out" -- 20
+    [ directory "/" 0
+    , file "/in" 1
+    , file "/out" 2
+    , directory "/modifiers/" 3
+    , directory "/modifiers/effective" 4
+    , file "/modifiers/effective/out" 5
+    , directory "/modifiers/depressed" 6
+    , file "/modifiers/depressed/out" 7
+    , directory "/modifiers/latched" 8
+    , file "/modifiers/latched/out" 9
+    , directory "/modifiers/locked" 10
+    , file "/modifiers/locked/out" 11
+    , directory "/group/" 12
+    , directory "/group/effective" 13
+    , file "/group/effective/out" 14
+    , directory "/group/depressed" 15
+    , file "/group/depressed/out" 16
+    , directory "/group/latched" 17
+    , file "/group/latched/out" 18
+    , directory "/group/locked" 19
+    , directory "/group/locked/out" 20
     ]
 
---     , FSItem Context.File
---        ((fileDetails  "/group/locked/out") { dRead = }) []
-dir, file :: RawFilePath -> FSItem Context
-dir name = FSItem Directory (dirDetails name) []
+directory, file :: RawFilePath -> FSItemsIndex -> FSItem Context
+directory name index = FSItem Context.Directory (dirDetails name index) []
 
-file name = FSItem Context.File (fileDetails name) []
+file name 1 = FSItem Context.File ((fileDetails name 1) {dWrite = inFileWrite}) []
+file name index = FSItem Context.File (fileDetails name index) []
 
 inFileWrite
   :: Fid
@@ -148,7 +149,7 @@ data Input =
 inputParser :: Parser Input
 inputParser = do
   keycode <- decimal
-  char ','
+  _ <- char ','
   keyDirection <- keyDirectionParser
   return (Input keycode keyDirection)
 

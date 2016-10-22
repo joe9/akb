@@ -88,4 +88,4 @@ test-suite akb-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/skb
+  location: https://github.com/joe9/akb
