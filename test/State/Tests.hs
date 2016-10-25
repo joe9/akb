@@ -13,7 +13,7 @@ import Test.Tasty.HUnit
 import BitMask
 import KeySymbolDefinitions
 import Modifiers
-import Skb
+import Akb
 import State
 
 -- got this idea from
@@ -55,11 +55,6 @@ tests =
     , testCase "testNonStickyLatching02" testNonStickyLatching02
     ]
 
---
---
---
---
---
 testIdentifyStateChanges01 :: Assertion
 testIdentifyStateChanges01 =
   (identifyStateChanges def def) @?= UpdatedStateComponents 0

@@ -8,7 +8,6 @@ import Foreign.C.String
 import Foreign.C.Types
 import Foreign.StablePtr
 
---
 import Keymap.CustomDvorak
 import KeySymbolDefinitions
 import Modifiers

@@ -23,9 +23,10 @@ import           Text.Groom
 import BitMask
 
 import           Data.NineP
-import           Network.NineP.Context hiding (Directory, File)
+import           Network.NineP.Context
 import qualified Network.NineP.Context as Context
 import           Network.NineP.Error
+import           Network.NineP.Functions
 import           Network.NineP.Server
 
 import Akb
@@ -86,10 +87,10 @@ fsList =
     ]
 
 directory, file :: RawFilePath -> FSItemsIndex -> FSItem Context
-directory name index = FSItem Context.Directory (dirDetails name index) []
+directory name index = FSItem Occupied (dirDetails name index) []
 
-file name 1 = FSItem Context.File ((fileDetails name 1) {dWrite = inFileWrite}) []
-file name index = FSItem Context.File (fileDetails name index) []
+file name 1 = FSItem Occupied ((fileDetails name 1) {dWrite = inFileWrite}) []
+file name index = FSItem Occupied (fileDetails name index) []
 
 inFileWrite
   :: Fid
