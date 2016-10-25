@@ -27,6 +27,9 @@ import           Network.NineP.Context
 import qualified Network.NineP.Context as Context
 import           Network.NineP.Error
 import           Network.NineP.Functions
+import           Network.NineP.ReadOnlyFile
+import           Network.NineP.WriteOnlyFile
+import           Network.NineP.Directory
 import           Network.NineP.Server
 
 import Akb
@@ -64,33 +67,31 @@ fsList :: V.Vector (FSItem Context)
 fsList =
   V.fromList
     [ directory "/" 0
-    , file "/in" 1
-    , file "/out" 2
+    , inFile "/in" 1
+    , readOnlyFile "/out" 2
     , directory "/modifiers/" 3
     , directory "/modifiers/effective" 4
-    , file "/modifiers/effective/out" 5
+    , readOnlyFile "/modifiers/effective/out" 5
     , directory "/modifiers/depressed" 6
-    , file "/modifiers/depressed/out" 7
+    , readOnlyFile "/modifiers/depressed/out" 7
     , directory "/modifiers/latched" 8
-    , file "/modifiers/latched/out" 9
+    , readOnlyFile "/modifiers/latched/out" 9
     , directory "/modifiers/locked" 10
-    , file "/modifiers/locked/out" 11
+    , readOnlyFile "/modifiers/locked/out" 11
     , directory "/group/" 12
     , directory "/group/effective" 13
-    , file "/group/effective/out" 14
+    , readOnlyFile "/group/effective/out" 14
     , directory "/group/depressed" 15
-    , file "/group/depressed/out" 16
+    , readOnlyFile "/group/depressed/out" 16
     , directory "/group/latched" 17
-    , file "/group/latched/out" 18
+    , readOnlyFile "/group/latched/out" 18
     , directory "/group/locked" 19
     , directory "/group/locked/out" 20
     ]
 
-directory, file :: RawFilePath -> FSItemsIndex -> FSItem Context
-directory name index = FSItem Occupied (dirDetails name index) []
-
-file name 1 = FSItem Occupied ((fileDetails name 1) {dWrite = inFileWrite}) []
-file name index = FSItem Occupied (fileDetails name index) []
+inFile :: RawFilePath -> FSItemsIndex -> FSItem Context
+inFile name index =
+  FSItem Occupied ( (writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
 
 inFileWrite
   :: Fid
@@ -158,15 +159,3 @@ keyDirectionParser :: Parser KeyDirection
 keyDirectionParser =
   (string "Pressed" >> return Pressed) <|>
   (string "Released" >> return Released)
-
-writeToOpenChannelsOfFSItemAtIndex :: FSItemsIndex
-                                   -> ByteString
-                                   -> HashMap.HashMap Fid FidState
-                                   -> IO ()
-writeToOpenChannelsOfFSItemAtIndex i bs =
-  mapM_ (\f -> writeToMaybeQueue (fidQueue f) bs) .
-  HashMap.filter (\f -> i == fidFSItemsIndex f && isJust (fidQueue f))
-
-writeToMaybeQueue :: Maybe (TQueue ByteString) -> ByteString -> IO ()
-writeToMaybeQueue (Nothing) _ = return ()
-writeToMaybeQueue (Just q) bs = atomically (writeTQueue q bs)
