@@ -19,6 +19,17 @@ keySymbolToUTF8 ks =
 
 -- TODO use text-icu package for translating from utf32 to utf8
 --   can also use the text package's Data.Text.Encoding
+-- <joe9> glguy: also stumbled upon text-icu . Just want to check if you recommend it.  [14:59]
+-- <joe9> shirt, use a logger thread
+-- <glguy> joe9: Two problems, text-icu introduces an external C library dependency that your users will need to install, it already depends on the text package that already
+--         handles this just as well  [15:00]
+-- <johnw> glguy: "just as well"?
+-- <johnw> i'd be surprised if text was as complete in its Unicode handling as ICU  [15:04]
+-- <glguy> johnw: What do you think the original qusetion was?
+-- <johnw> glguy: conversion of UTF-32 to UTF-8, no?
+-- <glguy> Yeah, there's no special unicode cases there
+-- <johnw> ah, ok
+-- <glguy> (there were a multiple text questions in play, just making sure)
 -- utf32ToUtf8 :: Word32 -> [Word8]
 -- TODO the end result should be an array after proper conversion
 utf32ToUtf8 :: Word32 -> Word8
