@@ -57,7 +57,7 @@ main = do
     Left e -> print e
     Right (Input kcode dir) -> print (keyEvent (pickInitialState 1) kcode dir)
   let context = def {cFSItems = fsList}
-  run9PServer context
+  run9PServer context (Host "127.0.0.1") "5960"
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = lookupKeyCode k s
