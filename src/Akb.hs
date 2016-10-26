@@ -10,6 +10,7 @@ import Foreign.StablePtr
 
 import Keymap.CustomDvorak
 import KeySymbolDefinitions
+import KeySymbolToUTF
 import Modifiers
 import State
 
@@ -20,10 +21,17 @@ pickInitialState 1 = customDvorakSticky
 pickInitialState _ = def
 
 -- skb_state_key_get_utf ptr keyCode = withState ptr (keyCodeToUTF keyCode)
-keyEvent :: State
-         -> KeyCode
-         -> KeyDirection
-         -> (Maybe (KeySymbol, Modifiers), State)
+keyEvent
+  :: State
+  -> KeyCode
+  -> KeyDirection
+  -> (Maybe (KeySymbol, Modifiers, Word32, Word8), State)
 keyEvent state keycode Pressed =
-  (\(a, b) -> (Just a, b)) (onKeyPress keycode state)
+  (\(kms, state) -> (Just (uncurry addUTF kms), state))
+    (onKeyPress keycode state)
 keyEvent state keycode Released = (Nothing, onKeyRelease keycode state)
+
+addUTF :: KeySymbol -> Modifiers -> (KeySymbol, Modifiers, Word32, Word8)
+addUTF ks mods =
+  let (utf32, utf8) = keySymbolToUTF8 ks
+  in (ks, mods, utf32, utf8)

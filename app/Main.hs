@@ -7,15 +7,15 @@ import           Control.Concurrent.STM.TQueue
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString                  as BS
 import qualified Data.ByteString.Char8            as BSC
+import           Data.Default
 import qualified Data.HashMap.Strict              as HashMap
 import           Data.Maybe
-import           Data.Default
 import           Data.Serialize
-import           Network.Simple.TCP
 import           Data.String.Conversions
 import qualified Data.Text.IO                     as TIO
 import qualified Data.Vector                      as V
 import           GHC.Show
+import           Network.Simple.TCP
 import           Protolude                        hiding (State, show,
                                                    state)
 import           System.Posix.ByteString.FilePath
@@ -26,13 +26,13 @@ import BitMask
 
 import           Data.NineP
 import           Network.NineP.Context
-import qualified Network.NineP.Context as Context
+import qualified Network.NineP.Context       as Context
+import           Network.NineP.Directory
 import           Network.NineP.Error
 import           Network.NineP.Functions
 import           Network.NineP.ReadOnlyFile
-import           Network.NineP.WriteOnlyFile
-import           Network.NineP.Directory
 import           Network.NineP.Server
+import           Network.NineP.WriteOnlyFile
 
 import Akb
 import KeySymbolDefinitions
@@ -96,7 +96,7 @@ fsList =
 
 inFile :: RawFilePath -> FSItemsIndex -> FSItem Context
 inFile name index =
-  FSItem Occupied ( (writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
+  FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
 
 inFileWrite
   :: Fid
@@ -109,21 +109,26 @@ inFileWrite
 inFileWrite fid offset bs fidState me c = do
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
-    Right (Input kcode dir) -> do
-      -- write to all /echo read channels
+    Right (Input kcode dir)
+    -- write to all /echo read channels
+     -> do
       writeToOpenChannelsOfFSItemAtIndex 2 bs (cFids c)
       case keyEvent (pickInitialState 1) kcode dir of
         (Nothing, state) ->
           BSC.putStrLn "inFileWrite: lookup returned nothing" >>
           return ((Right . fromIntegral . BS.length) bs, c)
-        (Just (ks, mods), state) -> do
+        (Just (ks, mods, utf32, utf8), state) -> do
           let fids = cFids c
-              kcodebs = (putByteString . cs .show) kcode
+              kcodebs = (putByteString . cs . show) kcode
               dirbs = (putByteString . cs . show) dir
               ksbs = (putByteString . cs . show . unKeySymbol) ks
               modsbs = (putByteString . cs . show) mods
+              utf32bs = (putByteString . cs . show) utf32
+              utf8bs = (putByteString . cs . show) utf8
               toOut =
-                BS.intercalate "," (fmap runPut [kcodebs, dirbs, ksbs, modsbs])
+                BS.intercalate
+                  ","
+                  (fmap runPut [kcodebs, dirbs, ksbs, modsbs, utf32bs, utf8bs])
               toModifiersEffectiveOut = runPut modsbs
           -- write to all /out read channels
           writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
@@ -134,16 +139,20 @@ inFileWrite fid offset bs fidState me c = do
                 (runPut . putWord32le . sDepressedModifiers) state
           writeToOpenChannelsOfFSItemAtIndex 8 toModifiersDepressedOut fids
           -- write to all /modifiers/latched/out read channels
-          let toModifiersLatchedOut = (runPut . putWord32le . sLatchedModifiers) state
+          let toModifiersLatchedOut =
+                (runPut . putWord32le . sLatchedModifiers) state
           writeToOpenChannelsOfFSItemAtIndex 10 toModifiersLatchedOut fids
           -- write to all /modifiers/locked/out read channels
-          let toModifiersLockedOut = (runPut . putWord32le . sLockedModifiers) state
+          let toModifiersLockedOut =
+                (runPut . putWord32le . sLockedModifiers) state
           writeToOpenChannelsOfFSItemAtIndex 12 toModifiersLockedOut fids
           -- write to all /group/effective/out read channels
-          let toGroupEffectiveOut = (runPut . putWord32le . sEffectiveGroup) state
+          let toGroupEffectiveOut =
+                (runPut . putWord32le . sEffectiveGroup) state
           writeToOpenChannelsOfFSItemAtIndex 15 toGroupEffectiveOut fids
           -- write to all /group/depressed/out read channels
-          let toGroupDepressedOut = (runPut . putWord32le . sDepressedGroup) state
+          let toGroupDepressedOut =
+                (runPut . putWord32le . sDepressedGroup) state
           writeToOpenChannelsOfFSItemAtIndex 17 toGroupDepressedOut fids
           -- write to all /group/latched/out read channels
           let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
