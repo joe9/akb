@@ -40,7 +40,7 @@ customDvorakSticky =
 --   from /tmp/keysyms.txt, join all lines between { } using the command
 --   awk '/\{[^}]*$/ { line = $0; while (getline && !/}/) line = line $0; $0 = line "}" } { print }' /tmp/keysyms.txt >| /tmp/keysyms-modified.txt
 --   for f in $(cat /tmp/keycodes.txt | sed --expression="s/\(<.*>\) = .*/\1/"); do grep "${f}" /tmp/keysyms-modified.txt | tr -d '\n' | sed --expression="s/.*= \(.*\);.*\(\[.*\]\).*/,(\1, V.fromList \2)/" ; echo "\r"; done >| /tmp/parsed-keymap.txt
-customDvorakKeymap :: [(Int, Group)]
+customDvorakKeymap :: [(KeyCode, Group)]
 customDvorakKeymap =
   [ (9, group [XKB_KEY_Escape])
   , (10, group [XKB_KEY_1, XKB_KEY_exclam])

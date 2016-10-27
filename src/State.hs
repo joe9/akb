@@ -61,7 +61,7 @@ data ModifierMap = ModifierMap
 instance Eq ModifierMap where
   (ModifierMap k t _) == (ModifierMap k1 t1 _) = (k == k1) && (t == t1)
 
-type KeyCode = Word32
+type KeyCode = Word16
 
 type Level = Int
 
@@ -186,8 +186,7 @@ lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
 
 onKeyPress :: KeyCode -> State -> ((KeySymbol, Modifiers), State)
 onKeyPress keycode state =
-  ((\(k, s) -> ((k, sEffectiveModifiers s), s)) . f keycode)
-    updatedEffectives
+  ((\(k, s) -> ((k, sEffectiveModifiers s), s)) . f keycode) updatedEffectives
   where
     f k s = onKeyCodeEvent stateChangeOnPress (XKB_KEY_NoSymbol, s) k s
     updatedEffectives = updateEffectives state
@@ -363,10 +362,12 @@ group = Group . V.fromList
 groups :: [[KeySymbol]] -> Group
 groups = Groups Clamp . V.fromList . fmap group
 
-keyCodeAndGroupsToKeymap :: [(Int, Group)] -> V.Vector Group
+keyCodeAndGroupsToKeymap :: [(KeyCode, Group)] -> V.Vector Group
 keyCodeAndGroupsToKeymap keycodes =
   let lastKeyCode = 1 + fst (last keycodes)
-  in (V.//) (V.replicate lastKeyCode (Group V.empty)) keycodes
+  in (V.//)
+       (V.replicate (fromIntegral lastKeyCode) (Group V.empty))
+       (fmap (\(f, s) -> ((fromIntegral :: KeyCode -> Int) f, s)) keycodes)
 
 -- might have to add this as a field to State and use lens to avoid
 -- the deep nesting code
