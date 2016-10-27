@@ -3,12 +3,11 @@
 
 module Main where
 
-import           Control.Concurrent.STM.TQueue
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString                  as BS
 import qualified Data.ByteString.Char8            as BSC
+import qualified Data.ByteString.Internal         as BSI (c2w)
 import           Data.Default
-import qualified Data.HashMap.Strict              as HashMap
 import           Data.Maybe
 import           Data.Serialize
 import           Data.String.Conversions
@@ -19,21 +18,19 @@ import           Network.Simple.TCP
 import           Protolude                        hiding (State, show,
                                                    state)
 import           System.Posix.ByteString.FilePath
-import           System.Posix.FilePath
-import           Text.Groom
 
+-- import           Text.Groom
 import BitMask
 
-import           Data.NineP
-import           Network.NineP.Context
-import qualified Network.NineP.Context       as Context
-import           Network.NineP.Directory
-import           Network.NineP.Error
-import           Network.NineP.Functions
-import           Network.NineP.ReadOnlyFile
-import           Network.NineP.Server
-import           Network.NineP.WriteOnlyFile
+import Data.NineP
+import Network.NineP.Context
+import Network.NineP.Directory
+import Network.NineP.Error
+import Network.NineP.ReadOnlyFile
+import Network.NineP.Server
+import Network.NineP.WriteOnlyFile
 
+-- import           Network.NineP.Functions
 import Akb
 import KeySymbolDefinitions
 import Modifiers
@@ -55,9 +52,18 @@ main = do
   print (fromBitMask 1 :: Maybe Modifier)
   print (fromBitMask 2 :: Maybe Modifier)
   print (fromBitMask 4 :: Maybe Modifier)
+  case parseOnly inputParser "100,100,1,10,1\n" of
+    Left e -> print e
+    Right (Input _ _ _ kcode dir) ->
+      print (keyEvent (pickInitialState 1) kcode dir)
+  case parseOnly inputParser "100,100,1,10,1\r\n" of
+    Left e -> print e
+    Right (Input _ _ _ kcode dir) ->
+      print (keyEvent (pickInitialState 1) kcode dir)
   case parseOnly inputParser "100,100,1,10,1" of
     Left e -> print e
-    Right (Input e m t kcode dir) -> print (keyEvent (pickInitialState 1) kcode dir)
+    Right (Input _ _ _ kcode dir) ->
+      print (keyEvent (pickInitialState 1) kcode dir)
   let context = def {cFSItems = fsList}
   run9PServer context (Host "127.0.0.1") "5960"
 
@@ -106,7 +112,7 @@ inFileWrite
   -> FSItem s
   -> Context
   -> IO (Either NineError Count, Context)
-inFileWrite fid offset bs fidState me c = do
+inFileWrite _ _ bs _ _ c = do
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
     -- write to all /echo read channels
@@ -119,16 +125,31 @@ inFileWrite fid offset bs fidState me c = do
         (Just (ks, mods, utf32, utf8), state) -> do
           let fids = cFids c
               kcodebs = (putByteString . cs . show) kcode
-              dirbs = (putByteString . cs . show) dir
+              dirvbs = (putByteString . cs . show . fromEnum) dir -- dirbs = (putByteString . cs . show) dir
               ksbs = (putByteString . cs . show . unKeySymbol) ks
               modsbs = (putByteString . cs . show) mods
               utf32bs = (putByteString . cs . show) utf32
               utf8bs = (putByteString . cs . show) utf8
+              ebs = (putByteString . cs . show) e
+              mbs = (putByteString . cs . show) m
+              tbs = (putByteString . cs . show) t
               toOut =
-                BS.append bs
-                    (BS.intercalate
-                    ","
-                    (fmap runPut [kcodebs, dirbs, ksbs, modsbs, utf32bs, utf8bs]))
+                BS.snoc
+                  (BS.intercalate
+                     ","
+                     (fmap
+                        runPut
+                        [ ebs
+                        , mbs
+                        , tbs
+                        , kcodebs
+                        , dirvbs
+                        , ksbs
+                        , modsbs
+                        , utf32bs
+                        , utf8bs
+                        ]))
+                  (BSI.c2w '\n')
               toModifiersEffectiveOut = runPut modsbs
           -- write to all /out read channels
           writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
@@ -166,19 +187,16 @@ inFileWrite fid offset bs fidState me c = do
 --   Input KeyCode
 --         KeyDirection
 --   deriving (Show)
-
 -- inputParser :: Parser Input
 -- inputParser = do
 --   keycode <- decimal
 --   _ <- char ','
 --   keyDirection <- keyDirectionParserS
 --   return (Input keycode keyDirection)
-
 -- keyDirectionParserS :: Parser KeyDirection
 -- keyDirectionParserS =
 --   (string "Pressed" >> return Pressed) <|>
 --   (string "Released" >> return Released)
-
 -- from /usr/include/linux/input.h : input_event
 -- input_event
 --       = long int time in seconds 64 bits,
@@ -188,13 +206,15 @@ inFileWrite fid offset bs fidState me c = do
 --         signed 32 bits value,
 -- read these second values in. it will be easy to check if the input
 -- matches with the output by the calling application
-data Input = Input   { iEpochSeconds :: Integer
-                     , iMicroseconds :: Integer
-                     , iType :: Word16
-                     , iKeyCode :: KeyCode
-                     , iKeyDirection :: KeyDirection
-                     } deriving (Eq, Show)
+data Input = Input
+  { iEpochSeconds :: Integer
+  , iMicroseconds :: Integer
+  , iType         :: Word16
+  , iKeyCode      :: KeyCode
+  , iKeyDirection :: KeyDirection
+  } deriving (Eq, Show)
 
+-- Do I need the endOfInput matching below?
 inputParser :: Parser Input
 inputParser = do
   epoch <- decimal
@@ -206,4 +226,6 @@ inputParser = do
   keyCode <- decimal
   _ <- char ','
   value <- decimal
+  --   _ <- endOfLine
+  _ <- (endOfLine <|> endOfInput)
   return (Input epoch microseconds itype keyCode (toEnum value))
