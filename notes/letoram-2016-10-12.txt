@@ -1,0 +1,156 @@
+
+[Wed Oct 12 2016]
+<joe9> letoram: I thought that it could be specific to the tui branch and switched to the master branch. But, the behaviour persisted.  [05:38]
+<joe9> I think in wayland, every event is tagged with a timestamp. Would that be a good idea or is it unnecessary? if so, the symtable.lua would not need a clock.  [05:46]
+<letoram> arcan actually saves the last used -w -h dimensions in the database  [05:52]
+<letoram> the platform init takes that into account when looking for a mode to use, and picks something "close"
+<letoram> so if you at one point use SDL with explicit -w -h and later use the same database with another platform on the egl-dri,
+<joe9> oh, ok. That would make sense.  [05:53]
+<letoram> it might pick a mode and screen density that is incorrect
+<joe9> yes, with sdl I used -w and -h and used the same database
+<letoram> but there is an issue with terminal+font-size+display edge cases, particularly with multiscreen and running a reset / crash recovery  [05:56]
+<letoram> https://github.com/letoram/durden/issues/25
+<joe9> rm -rf the database to fix the issue?  [05:57]
+<letoram> arcan_db drop_appl arcan
+<joe9> letoram: ok, Thanks. will do that  [05:58]
+<joe9> How do you want me tackle the sticky keys ? Start by trying to change the symtable? is there any other app that is using the clock?  [05:59]
+<letoram> so "the clock" here is actually the built-in monotonic CLOCK (@25Hz) that animations etc. are defined through, so it is disconnected from the system clock  [06:01]
+<letoram> (25Hz picked to be not evenly divisible with 60 to easier spot interpolation errors etc.)
+<letoram> and to favor those with 75/90Hz displays :)  [06:02]
+<letoram> in lua land, the current value is just accessible to a globally updated constant ("CLOCK") (and updates to it correlate with invocations to the _clock_pulse entry
+          point)  [06:03]
+<letoram> so it's more akin to electronics CLK than timekeeping
+<joe9> is there a template (application) that I can follow?  [06:04]
+<letoram> thinking thinking .. so the "easiest" approach is ini symtable.lua with a wrapper or something to the patch function that retains/replaces the modifier field    [06:17]
+<letoram> and complement with a tick function that is added to the durden_clock_pulse in durden.lua  [06:18]
+<letoram> in the patch function you can keep the modifier field and just bit.bor it together with previous events and reset after a normal key lookup is successful or after a
+          certain amount of time has elapsed  [06:28]
+<joe9> letoram: is there a reason why you picked to store the configuration in a db? It is easier to manipulate when using flat files.  [07:31]
+<letoram> many, it's not intended as the user facing configuration interface -- .lua is the configuration file format  [07:39]
+<letoram> database + arcan_db tool is for dynamic key/value, trusted whitelist, populated by external tools or scripts (package managers and the likes)
+<joe9> makes perfect sense, Thanks.  [08:55]
+<joe9> https://paste.pound-python.org/show/SnEG4xKiXJGr5meTvjui/ any suggestions on how to fix this, please? I could not find the rebuild command in the arcan_db help  [09:15]
+<letoram> that's weird  [09:31]
+<letoram> old/deprecated format that actually refers to something from many many years ago when there was a script that scanned the system and added media it could find
+          etc. that was removed before 0.4..  [09:32]
+<letoram> ah haha, I know what it is ..  [09:33]
+<letoram> sooooo.. the database version tag is stored as k/v in the reserved appl name arcan  [09:34]
+<letoram> the drop_appl arcan command removed the version tag :p
+<joe9> should I just remove the sqlite file?  [09:39]
+<letoram> if there's nothing of value in it, yes
+<joe9> nope, other than the keybindings. What else does it store?  [09:43]
+<joe9> that is my (newbie) opinion.
+<letoram> all dynamic configuration you do in durden
+<letoram> essentially, any appl (set of lua-scripts+resources) get a database table as a key-val store
+<joe9> ok, Thanks.  [09:44]
+<letoram> config.lua in durden has a set of defaults in the lua file, that it sweeps through and saves to the database, any menu config / binding etc. is stored in there
+<letoram> so what you can see with the arcan_db show_appl applname
+<letoram> the second use for the db is the application whitelisting thing,
+<letoram> you can preconfigure "launch targets", i.e. arcan_db add_target myname (-optional_tag used for building custom systems) binary-format (like libretro, ...)
+          path/to/executable and argv  [09:45]
+<letoram> for each target, argv + env + list of preload libs are tracked  [09:46]
+<joe9> letoram: the events are read from evdev and the engine/arcan_lua.[ch] is the wrapper calling the lua applications, correct?  [09:49]
+<letoram> https://youtu.be/Z4XNtlnl2gQ?t=3m38s you can briefly see durden actually scanning the list of targets and configurations and launching something
+<letoram> platform/evdev/* monitors /dev/input (or some other folder at your discretion with inotify, I avoid udev on purpose) grabs / probes new nodes, translates them and
+          enqueues (arcan_event.c) that forwards to arcan_lua.c that repackages and inserts into lua scripts in the applname_input(iotbl) function  [09:50]
+<joe9> platform/evdev* is what i need if I want to figure out how the keycode to keysym translation works.  [09:53]
+<letoram> it's "painful" to say the least :p
+<joe9> letoram: ok, Thanks. will try. what is painful? understanding it  or the quirks?  [09:54]
+<joe9> of evdev
+<letoram> the entire system
+<letoram> every OS does this notably different
+<letoram> and with more abstract platforms, like SDL1.2 or X, you get abstraction of abstraction with data lost in the process  [09:55]
+<letoram> so I just "gather what I can: utf8, keysym, keycode, scancode, ..." package them and hope someone in the chain can salvage the data
+<letoram> say you want to support VNC? great, now you need X Keysyms as it is built into the protocol.. you want to support VMs like Qemu? great, now you should preferably have
+          the device scancode at hand .. and so on  [09:56]
+<letoram> the "big picture" of input is more complicated than graphics and audio really ..
+<joe9> the key repeat stuff seems to belong in event.c. Do you like it or do you want the clients deal with that stuff (I think wayland does this)?  [09:59]
+<letoram> it's a tradeoff, there's a script interface to disable repeat  [10:00]
+<letoram> durden uses that and says "hey, I control my own rate"
+<joe9> oh, ok. so, it is run-time controllable setting
+<letoram> the principle is that there is no guarantee that anything a client gets is "genuine"
+<letoram> everything can be synthesized or tampered with at the script level  [10:01]
+<joe9> if that is so, then arcan should probably send a timestamp too?
+<joe9> along with the utf8, keycode, scancode, keysym, etc.  [10:02]
+<letoram> I just never found a use for the timestamp client side
+<joe9> to calculate the repeat stuff?  [10:03]
+<joe9> to compare against the previous value to check if it is a repeat value or not?
+<letoram> ah now I understand how you think  [10:04]
+<letoram> I mean that I don't want the client to deal with repeat,
+<letoram> the running appl(so set of scripts, like durden) explicitly routes and repeats  [10:05]
+<letoram> if you look in iostatem.lua, you see the repeat- code
+<joe9> ok, will check. Thanks.
+<joe9> Is there a reason for utf8 and not utf32?  [10:06]
+<letoram> oh I hate UTF8 and UCF4 both :p it's just that more clients are capable of doing something with utf8 than with utf32 in my experience  [10:07]
+<letoram> lua strings being byte arrays helped drive the choice as well  [10:08]
+<letoram> I just yesterday found a long-standing terminal emulator bug on the SDL platform on OSX  [10:09]
+<letoram> where arrow keys never really worked as expected
+<letoram> and I cheated by looking at the SDL12 keysym and using that.. 
+<letoram> previously the chain was: "ok, fine we got a key".. "is there valid utf8? yes? send that to the terminal state machine, if not, try and use the ascii- representation
+          of the keysym or the keysym with modifiers because hey, depending on terminal state there might also be alternative mapping modes and ..."  [10:10]
+<letoram> turns out the arrow keys generated "valid utf8"
+<joe9> keymap is a global setting with this scenario, correct? Each application cannot dictate a different keymap, correct?  [10:11]
+<letoram> correct
+<letoram> but with a twist  [10:12]
+<letoram> so I contribute to making the input mess more complicated :D
+<letoram> a client can enqueue LABELHINT events, saying "hey, I support an abstract label of a digital or analog type with >insert name<"
+<letoram> durden then allows you to one-time input or bind a label to a key or device  [10:13]
+<joe9> I was trying to figure out what the lablehint was for.
+<letoram> so this gives clients a means of exposing its shortcuts, while never having to implement rebinding itself  [10:14]
+<joe9>  "hey, I support an abstract label of a digital or analog type with >insert name<" -- this is just a text/byte(utf8) string?  [10:19]
+<letoram> yes
+<joe9> if 'k' is pressed, then send "k is something else" instead of just "k"?
+<joe9> the string "k is something else"
+<joe9> this is similar to how xkb sends multiple keysyms for a keycode ,correct?  [10:20]
+<letoram> example: terminal emulator can expose "font size+" and the UI can show that
+<letoram> rather than having to think about "ok ctrl+k is increment font size"
+<joe9> it is the string "font size+" -- and not a function, is it?
+<letoram> yes, it's user presentable
+<letoram> so ideally it should follow any received GEOHINT in terms of language, but I'm so not at that stage yet :p  [10:21]
+<joe9> but, this type of translation is application-specific, correct?  [10:22]
+<joe9> it cannot be part of the keycode translation. It would be the application runner/wrapper that would be doing this translation, correct?  [10:23]
+<joe9> the routine that is feeding the inputtbl to the application
+<letoram> an exercise to help you,  [10:24]
+<letoram> the demo I linked earlier
+<letoram> the pastebin that show a minimal "how a client can connect and draw" (target_alloc bla bla)
+<letoram> modify that script to try and generate input to that connection  [10:25]
+<letoram> the tests/frameserver/iodump project is a good client to use and connect  [10:26]
+<joe9> https://paste.pound-python.org/show/6Ok65Iq975fU91PkJ5EQ/ from the comment I gather that you want to move this stuff to fuse and let the .handler be changed there?
+                                                                                                                                                                           [10:39]
+<letoram> yes and no :)  [10:49]
+<letoram> that comment was from a time where I still had some hope in udev etc. (before looking at the source)  [10:50]
+<letoram> the fuse- bit is for different things :P
+<joe9> I do not know much about udev. But, I do not like the creep of systemd into udev.  [11:02]
+<joe9> would not mind avoiding udevthat altogether, if it can be helped..  [11:03]
+<letoram> udev itself is just bad, but it represents something worse - 
+<letoram> the creep of what is kernel and what is userspace,
+<letoram> for a lot of device access, you can't really get by with sysctl + open,close,read,write ioctl anymore  [11:04]
+<letoram> but need heuristics, and rather complicated ones at that, that scrape various virtual filesystems (sysfs/procfs that is)  [11:05]
+<letoram> udev is dbus+policydb+ruleset for scraping that  [11:06]
+<letoram> and you're "supposed" to use it through libudev, the same as you are "supposed" to use libinput and libdrm and libbacklight and ..
+<letoram> that each pull in their own dependencies and no matter what you do you get dbus and systemd ..
+<letoram> example: evdev, the kernel interface, does not provide a way for you to know if a device is a keyboard or a gamepad .. udev can tell you that..  [11:07]
+<letoram> and it boils down to a hardcoded rule that says "yeah if there's more than 70 buttons it's probably a keyboard"
+<letoram> it mimics winnt much more than it follows some unix adage  [11:08]
+<joe9> letoram: good to know. thanks for sharing it.  [11:11]
+<joe9> pdf reader on durden? qemu?  [11:18]
+<letoram> yeah, there's nothing "native" written to that end  [11:19]
+<letoram> every time I sit down and try to write on the waybridge- thing, I get the whole "ok if I just bang my head against the wall instead"
+<letoram> to the point that I probably should've just written a QT backend driver and be done with it  [11:20]
+<joe9> letoram: QT or gtk backend or x backend or waybridge, I think are the options. Each of them seem to be a daunting task.  [11:26]
+<joe9> I hear that QT was easier to port to wayland. but, C++ is not my cup of tea.
+<letoram> I think the effort is something like Wine > GTK > waybridge > Qt last I did the "quick evaluation"  [11:27]
+<letoram> Wine: 6-months full-time effort.. GTK: about a month fulltime, waybridge: "unknown but closer to a month" (because with all the extensions and protocols and
+          subprotocols and no real working testing suite you don't know)  [11:28]
+<letoram> "oh you were using xdg_shell_v5? that's old news, now you need to implement zxdg_shell_v6 or the default weston test cases won't run"  [11:29]
+<joe9> interesting to know that GTK takes that long too.  [11:38]
+<letoram> the GTK codebase is not a pretty thing
+<letoram> I went with QEmu because I know emulators/virtual machines very well, and in the long run, I think para-virtualization for compatiblity will win-out time-spent
+          v. pay-off  [11:39]
+<letoram> I can't think of a single wayland- application I'd want to run, only web-browser for GTK and only Ida Pro for QT ..  [11:41]
+<joe9> imho the GTK architecture is obsolete
+<letoram> the rest I have in VMs and emulators or just terminal
+<joe9> what about pdf reader? what do you use?  [11:42]
+<letoram> ehrm, I send the URL to a printer at work :)
+<letoram> <-- former academic
+<letoram> information absorption and topic study is very much an offline activity to me: dead papers, notebook, marker pen..  [11:44]

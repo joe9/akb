@@ -1,0 +1,20 @@
+
+[Tue Oct 11 2016]
+<joe9> just want to check if you have plans on merging the master and tui branches. The setup struct on tui branch works fine. I also need the preserve environment behaviour of
+       the terminal.  [15:40]
+<joe9> If you do not plan on merging them, I can merge the setup patch locally.  [15:41]
+
+[Tue Oct 11 2016]
+<joe9> weird behaviour, the arcan terminal has lost the resolution. It is printing in a large font (font size is the same as that of the linux console before drm starts).
+                                                                                                                                                                           [20:53]
+<joe9> linux console tty login is in a good font size. But, after I start arcan and then M-Ret (open the terminal), the terminal is using large fonts.  [20:54]
+<joe9> I am checking out the symtable.lua to figure out how to make the modifiers sticky (1st press latches, 2nd press locks, 3rd press release the locks and latches.). Pressing
+       the 1st non-modifier key releases the latches. https://github.com/joe9/skb/blob/master/src/State.hs is how I implemented it for wayland to replace libxkbcommon on my
+       system.  [21:03]
+<joe9> I am not a lua guy, so I need to figure out if I can reuse the code that I used there. I checked out the durden keybindings.lua . I like your approach of ignoring "caps
+       lock". I think it is useless when I can lock sticky with a double tap.  [21:07]
+<letoram> on the tui branch?  [23:41]
+<letoram> it will be merged with master soon, there are a few bugs I need sorted out first  [23:42]
+<letoram> the big big font thing is a (tui-specific) bug that should've been fixed yesterday evening  [23:43]
+<letoram> for sticky modifiers, the plan for sticky was to hook up a clock to symtable.lua, and let the .patch function deal with keeping modifiers held down or not  [23:49]
+<letoram> and at the same time use that for debounce protection  [23:50]
