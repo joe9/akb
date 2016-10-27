@@ -1,28 +1,23 @@
 # akb
 
-Understandable non-backward-compatible alternative to libxkbcommon with working Sticky keys.
-
-Use the src/Bindings/Xkbcomon.hsc to guide the Haskell FFI development
-
-* cd src/Bindings && c2hsc --prefix=Bindings ../libxkbcommon/xkbcommon/xkbcommon.h
+Alternative Keyboard to use with arcan. Designed to work with sticky keys.
 
 ## Installation
 
 Build Instructions:
 
-1.   Use make instead of "stack build" as make generates the custom libskb.so
+1.  build akb using stack or cabal
 
 Install instructions:
 
-1. Install libxkbcommon
-2. Install skb using make && make install. Below is what install does.
-    * cp src/libskb.so $(WLD)/lib/
-    * cp src/libskb-xkbcommon.so $(WLD)/lib/
-    * cp src/Skb_stub.h $(WLD)/include/
-    * cp src/skb.h $(WLD)/include/
-3. cd (lib directory)/
-    * mv libxkbcommon.so.0.0.0 libxkbcommon.so.0.0.0.original
-    * ln -sf libskb-xkbcommon.so libxkbcommon.so.0.0.0
+1. State the Akb process (opens a tcp port 5960)
+2. Mount the above process as filesystem tree
+    * mkdir /home/j/dev/apps/durden-arcan/kbdfs
+    * sudo 9mount 'tcp!localhost!5960' /home/j/dev/apps/durden-arcan/kbdfs
+    * Or, for debugging, sudo 9mount -d err,devel,9p,vfs,conv,fcall 'tcp!localhost!5960' /home/j/dev/apps/durden-arcan/kbdfs
+3. patch arcan to use the above functionality
+    * TODO
+    * TODO
 
 ## Usage
 
@@ -42,7 +37,7 @@ Felt that it would be easier to roll this out than trying to add the sticky func
 
 ## Credits
 
-Special thanks to Cloudef of #orbment, daniels of #wayland
+Special thanks to the God of Arcan/Durden
 
 ## License
 
