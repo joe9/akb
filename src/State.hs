@@ -19,8 +19,9 @@ import Modifiers
 --     XKB_KEY_DOWN  /**< The key was pressed. */
 -- };
 data KeyDirection
-  = Released -- Up
-  | Pressed -- Down
+  = Released -- Up = input_event.value=0
+  | Pressed -- Down = input_event.value=1
+  | Repeat -- Repeat = input_event.value=2
   deriving (Enum, Eq, Show)
 
 --     /** Depressed modifiers, i.e. a key is physically holding them. */

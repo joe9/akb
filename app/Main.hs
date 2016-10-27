@@ -55,9 +55,9 @@ main = do
   print (fromBitMask 1 :: Maybe Modifier)
   print (fromBitMask 2 :: Maybe Modifier)
   print (fromBitMask 4 :: Maybe Modifier)
-  case parseOnly inputParser "10,Pressed" of
+  case parseOnly inputParser "100,100,1,10,1" of
     Left e -> print e
-    Right (Input kcode dir) -> print (keyEvent (pickInitialState 1) kcode dir)
+    Right (Input e m t kcode dir) -> print (keyEvent (pickInitialState 1) kcode dir)
   let context = def {cFSItems = fsList}
   run9PServer context (Host "127.0.0.1") "5960"
 
@@ -109,9 +109,8 @@ inFileWrite
 inFileWrite fid offset bs fidState me c = do
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
-    Right (Input kcode dir)
     -- write to all /echo read channels
-     -> do
+    Right (Input e m t kcode dir) -> do
       writeToOpenChannelsOfFSItemAtIndex 2 bs (cFids c)
       case keyEvent (pickInitialState 1) kcode dir of
         (Nothing, state) ->
@@ -126,9 +125,10 @@ inFileWrite fid offset bs fidState me c = do
               utf32bs = (putByteString . cs . show) utf32
               utf8bs = (putByteString . cs . show) utf8
               toOut =
-                BS.intercalate
-                  ","
-                  (fmap runPut [kcodebs, dirbs, ksbs, modsbs, utf32bs, utf8bs])
+                BS.append bs
+                    (BS.intercalate
+                    ","
+                    (fmap runPut [kcodebs, dirbs, ksbs, modsbs, utf32bs, utf8bs]))
               toModifiersEffectiveOut = runPut modsbs
           -- write to all /out read channels
           writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
@@ -162,19 +162,48 @@ inFileWrite fid offset bs fidState me c = do
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c)
 
-data Input =
-  Input KeyCode
-        KeyDirection
-  deriving (Show)
+-- data Input =
+--   Input KeyCode
+--         KeyDirection
+--   deriving (Show)
+
+-- inputParser :: Parser Input
+-- inputParser = do
+--   keycode <- decimal
+--   _ <- char ','
+--   keyDirection <- keyDirectionParserS
+--   return (Input keycode keyDirection)
+
+-- keyDirectionParserS :: Parser KeyDirection
+-- keyDirectionParserS =
+--   (string "Pressed" >> return Pressed) <|>
+--   (string "Released" >> return Released)
+
+-- from /usr/include/linux/input.h : input_event
+-- input_event
+--       = long int time in seconds 64 bits,
+--         long int time in microseconds 64 bits,
+--         unsigned 16 bits type,
+--         unsigned 16 bits code,
+--         signed 32 bits value,
+-- read these second values in. it will be easy to check if the input
+-- matches with the output by the calling application
+data Input = Input   { iEpochSeconds :: Integer
+                     , iMicroseconds :: Integer
+                     , iType :: Word16
+                     , iKeyCode :: KeyCode
+                     , iKeyDirection :: KeyDirection
+                     } deriving (Eq, Show)
 
 inputParser :: Parser Input
 inputParser = do
-  keycode <- decimal
+  epoch <- decimal
   _ <- char ','
-  keyDirection <- keyDirectionParser
-  return (Input keycode keyDirection)
-
-keyDirectionParser :: Parser KeyDirection
-keyDirectionParser =
-  (string "Pressed" >> return Pressed) <|>
-  (string "Released" >> return Released)
+  microseconds <- decimal
+  _ <- char ','
+  itype <- decimal
+  _ <- char ','
+  keyCode <- decimal
+  _ <- char ','
+  value <- decimal
+  return (Input epoch microseconds itype keyCode (toEnum value))
