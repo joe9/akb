@@ -10,7 +10,7 @@ Build Instructions:
 
 Install instructions:
 
-1. State the Akb process (opens a tcp port 5960)
+1. Start the Akb process (opens a tcp port 5960)
 2. Mount the above process as filesystem tree
     * mkdir /home/j/dev/apps/durden-arcan/kbdfs
     * sudo 9mount 'tcp!localhost!5960' /home/j/dev/apps/durden-arcan/kbdfs
