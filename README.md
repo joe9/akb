@@ -37,7 +37,7 @@ Felt that it would be easier to roll this out than trying to add the sticky func
 
 ## Credits
 
-Special thanks to the God of Arcan/Durden
+Special thanks to the Mr. Bjorn Stahl, the God of Arcan/Durden.
 
 ## License
 
