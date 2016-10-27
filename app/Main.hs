@@ -91,7 +91,7 @@ fsList =
     , directory "/group/latched" 18
     , readOnlyFile "/group/latched/out" 19
     , directory "/group/locked" 20
-    , directory "/group/locked/out" 21
+    , readOnlyFile "/group/locked/out" 21
     ]
 
 inFile :: RawFilePath -> FSItemsIndex -> FSItem Context
