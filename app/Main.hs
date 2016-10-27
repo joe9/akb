@@ -64,7 +64,9 @@ main = do
     Left e -> print e
     Right (Input _ _ _ kcode dir) ->
       print (keyEvent (pickInitialState 1) kcode dir)
-  let context = def {cFSItems = fsList}
+  let context = (def :: Context State) { cFSItems = fsList
+                                      , cUserState = pickInitialState 1
+                                      }
   run9PServer context (Host "127.0.0.1") "5960"
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
@@ -73,7 +75,7 @@ getKeySymbol s k = lookupKeyCode k s
 -- TODO : add stAtime, stMtime, stUid, stGid and stMuid
 -- TODO : use Data.Tree to build this
 --   https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/Simple%20examples#data-tree
-fsList :: V.Vector (FSItem Context)
+fsList :: V.Vector (FSItem (Context State))
 fsList =
   V.fromList
     [ directory "/" 0
@@ -100,7 +102,7 @@ fsList =
     , readOnlyFile "/group/locked/out" 21
     ]
 
-inFile :: RawFilePath -> FSItemsIndex -> FSItem Context
+inFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
 inFile name index =
   FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
 
@@ -110,16 +112,16 @@ inFileWrite
   -> ByteString
   -> FidState
   -> FSItem s
-  -> Context
-  -> IO (Either NineError Count, Context)
+  -> (Context State)
+  -> IO (Either NineError Count, (Context State))
 inFileWrite _ _ bs _ _ c = do
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
     -- write to all /echo read channels
     Right (Input e m t kcode dir) -> do
       writeToOpenChannelsOfFSItemAtIndex 2 bs (cFids c)
-      case keyEvent (pickInitialState 1) kcode dir of
-        (Nothing, state) ->
+      case keyEvent (cUserState c) kcode dir of
+        (Nothing, _) ->
           BSC.putStrLn "inFileWrite: lookup returned nothing" >>
           return ((Right . fromIntegral . BS.length) bs, c)
         (Just (ks, mods, utf32, utf8), state) -> do
@@ -181,7 +183,7 @@ inFileWrite _ _ bs _ _ c = do
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
-          return ((Right . fromIntegral . BS.length) bs, c)
+          return ((Right . fromIntegral . BS.length) bs, c{cUserState = state})
 
 -- data Input =
 --   Input KeyCode
