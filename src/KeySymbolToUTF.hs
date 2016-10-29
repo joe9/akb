@@ -35,7 +35,7 @@ keySymbolToUTF8 ks =
 utf32ToUtf8 :: Word32 -> Word8
 utf32ToUtf8 unichar
   | unichar <= 0x007f = (fromIntegral :: Word32 -> Word8) unichar
-  | otherwise = 0 -- not implemented, Should this be a panic?
+  | otherwise = 0 -- not implemented yet, Should this be a panic?
 
 -- translated from libxkbcommon/src/keysym-utf.c
 keySymbolToUTF :: KeySymbol -> Word32
