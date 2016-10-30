@@ -1,17 +1,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <stdbool.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-int main()
-{
-   /*    char readpath[] = "/home/j/dev/apps/durden-arcan/kbdfs/out"; */
-   char readpath[] = "/home/j/dev/apps/plan9/test/out";
+int main() {
+   char readpath[] = "/home/j/dev/apps/durden-arcan/kbdfs/out";
    int readfd = 0, ret = 0;
 
    readfd = open(readpath, O_RDONLY);

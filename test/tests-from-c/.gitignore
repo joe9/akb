@@ -2,3 +2,4 @@ test-libskb
 test-libxkb
 test-akb
 read-out-loop
+fscanf-out-loop
