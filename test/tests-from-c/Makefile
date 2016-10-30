@@ -13,18 +13,22 @@ CC = gcc
 #  -Wall turns on most, but not all, compiler warnings
 CFLAGS  = -g -Wall
 
-all: test-akb
+all: test-akb read-out-loop
 
 skb: test-libskb
 	./test-libskb
 
 run: all
 	./test-akb
+	./read-out-loop
+
+read-out-loop: read-out-loop.c
+	$(CC) $< -o $@
 
 test-akb: test-akb.c
 	$(CC) $< -o $@
 
 clean:
-	$(RM) test-akb
+	$(RM) test-akb read-out-loop
 
 .PHONY: all clean run

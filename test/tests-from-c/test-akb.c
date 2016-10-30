@@ -55,6 +55,8 @@ int main()
    fprintf(writefile,"%li,%li,%hu,%hu,%i\n", t,ms,type,code,v);
    fflush(writefile);
 
+   /* fscanf vs getline/sscanf http://stackoverflow.com/a/22331878 */
+   /* use getline instead of fgets */
    int ret = fscanf(echofile,"%li,%li,%hu,%hu,%i\n", &t,&ms,&type,&code,&v);
    if(ret == 5)
       printf("from echo file: %li,%li,%hu,%hu,%i\n", t,ms,type,code,v);
