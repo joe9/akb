@@ -13,7 +13,7 @@ int main() {
 
    FILE * readFile = fopen(readPath, "r");
    if (NULL == readFile) {
-      perror("open failed: ");
+      perror("open failed");
       printf("Couldn't open file %s for reading.\n", readPath);
       exit(EXIT_FAILURE);
    }
@@ -40,14 +40,14 @@ int main() {
 	 printf("No match.\n");
 	 break;
       } else {
-	 perror("fscanf: ");
+	 perror("fscanf");
 	 break;
       }
    }
 
    int ret = fclose(readFile);
    if (0 != ret) {
-      perror("close failed: ");
+      perror("close failed");
       printf("Couldn't close file %s opened for reading.\n", readPath);
       exit(EXIT_FAILURE);
    }

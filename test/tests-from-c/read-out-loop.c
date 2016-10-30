@@ -11,7 +11,7 @@ int main() {
 
    readfd = open(readpath, O_RDONLY);
    if (-1 == readfd) {
-      perror("open failed: ");
+      perror("open failed");
       printf("Couldn't open file %s for reading.\n", readpath);
       exit(EXIT_FAILURE);
    }
@@ -23,11 +23,11 @@ int main() {
    while (-1 != (bytes_read = read(readfd, buf, count - 1))){
       printf("contents of %s\n",buf);
    }
-   perror("read: ");
+   perror("read");
 
    ret = close(readfd);
    if (-1 == ret) {
-      perror("close failed: ");
+      perror("close failed");
       printf("Couldn't close file %s opened for reading.\n", readpath);
       exit(EXIT_FAILURE);
    }
