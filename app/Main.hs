@@ -64,9 +64,9 @@ main = do
     Left e -> print e
     Right (Input _ _ _ kcode dir) ->
       print (keyEvent (pickInitialState 1) kcode dir)
-  let context = (def :: Context State) { cFSItems = fsList
-                                      , cUserState = pickInitialState 1
-                                      }
+  let context =
+        (def :: Context State)
+        {cFSItems = fsList, cUserState = pickInitialState 1}
   run9PServer context (Host "127.0.0.1") "5960"
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
@@ -183,7 +183,7 @@ inFileWrite _ _ bs _ _ c = do
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
-          return ((Right . fromIntegral . BS.length) bs, c{cUserState = state})
+          return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
 -- data Input =
 --   Input KeyCode
