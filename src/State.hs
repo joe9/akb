@@ -3,14 +3,14 @@
 
 module State where
 
-import           Protolude hiding (State, group)
-import           GHC.Show
 import           Data.Bits
 import           Data.Default
+import           Data.List    hiding (group)
 import           Data.Maybe
 import qualified Data.Vector  as V
 import           Data.Word
-import           Data.List hiding (group)
+import           GHC.Show
+import           Protolude    hiding (State, group)
 import           Text.Groom
 
 --

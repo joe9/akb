@@ -1,19 +1,18 @@
-
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Akb where
 
 --   http://stackoverflow.com/questions/14125057/how-to-poke-a-vector-or-to-get-a-ptr-vector-to-its-data
-import Data.Default
-import Data.IORef
-import Data.Word
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import Foreign.C.String
-import Foreign.C.Types
-import Foreign.StablePtr
-import           Protolude hiding (State, group)
+import           Data.ByteString   (ByteString)
+import qualified Data.ByteString   as BS
+import           Data.Default
+import           Data.IORef
+import           Data.Word
+import           Foreign.C.String
+import           Foreign.C.Types
+import           Foreign.StablePtr
+import           Protolude         hiding (State, group)
 
 import Keymap.CustomDvorak
 import KeySymbolDefinitions

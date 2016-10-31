@@ -1,4 +1,3 @@
-
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -9,10 +8,9 @@ module Keymap.CustomDvorak
   ) where
 
 import           Data.Default
-import           Protolude hiding (State, group)
 import qualified Data.Vector  as V
+import           Protolude    hiding (State, group)
 
---
 import KeySymbolDefinitions
 import Modifiers
 import OnKeyEvent

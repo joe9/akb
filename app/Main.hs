@@ -38,7 +38,8 @@ import State
 
 main :: IO ()
 main = do
-  TIO.putStrLn (showKeySymbol ((getKeySymbol (pickInitialStateS "customDvorak") 10)))
+  TIO.putStrLn
+    (showKeySymbol ((getKeySymbol (pickInitialStateS "customDvorak") 10)))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
@@ -185,6 +186,7 @@ inFileWrite _ _ bs _ _ c = do
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
+--           writeToOpenChannelsOfFSItemAtIndex 3 "test string" fids
 -- data Input =
 --   Input KeyCode
 --         KeyDirection

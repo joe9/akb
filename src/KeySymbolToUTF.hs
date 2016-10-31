@@ -1,9 +1,8 @@
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE NoImplicitPrelude        #-}
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE PatternSynonyms          #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module KeySymbolToUTF
   ( keySymbolToUTF
@@ -11,8 +10,8 @@ module KeySymbolToUTF
   ) where
 
 import Foreign
-import           Protolude hiding (State, group)
 import KeySymbolDefinitions
+import Protolude            hiding (State, group)
 
 keySymbolToUTF8 :: KeySymbol -> (Word32, Word8)
 keySymbolToUTF8 ks =
