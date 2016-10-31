@@ -1,10 +1,16 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module State where
 
+import           Protolude hiding (State, group)
+import           GHC.Show
 import           Data.Bits
 import           Data.Default
 import           Data.Maybe
 import qualified Data.Vector  as V
 import           Data.Word
+import           Data.List hiding (group)
 import           Text.Groom
 
 --
@@ -170,7 +176,7 @@ instance Default State where
       onKey
       shiftIsLevelTwoCalculateLevel
       shiftIsLevelTwoConsumeModifiers
-      id
+      identity
       0
       0
       0

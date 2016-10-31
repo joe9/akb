@@ -2,6 +2,8 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE OverloadedStrings        #-}
 {-# LANGUAGE PatternSynonyms          #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module KeySymbolToUTF
   ( keySymbolToUTF
@@ -9,6 +11,7 @@ module KeySymbolToUTF
   ) where
 
 import Foreign
+import           Protolude hiding (State, group)
 import KeySymbolDefinitions
 
 keySymbolToUTF8 :: KeySymbol -> (Word32, Word8)

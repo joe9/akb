@@ -1,6 +1,10 @@
+
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 module OnKeyEvent where
 
 import           Data.Default
+import           Protolude hiding (State, group)
 import qualified Data.Vector  as V
 
 --

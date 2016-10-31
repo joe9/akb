@@ -38,7 +38,7 @@ import State
 
 main :: IO ()
 main = do
-  TIO.putStrLn (showKeySymbol ((getKeySymbol (pickInitialState 1) 10)))
+  TIO.putStrLn (showKeySymbol ((getKeySymbol (pickInitialStateS "customDvorak") 10)))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
