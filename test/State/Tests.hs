@@ -6,10 +6,11 @@ module State.Tests
   ( tests
   ) where
 
-import GHC.Show
 import Data.Bits
-import Data.ByteString (ByteString)
+import Data.ByteString
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
+import qualified Data.ByteString.Internal         as BSI (c2w)
 import qualified Data.Vector as V
 import Data.Default
 import Data.Foldable
@@ -17,10 +18,12 @@ import Data.String.Conversions
 import Test.Tasty
 import Test.Tasty.HUnit
 import Protolude
+import System.IO
 
 import BitMask
 
 import KeySymbolDefinitions
+import KeySymbolToUTF
 import Keymap.CustomDvorak
 import Modifiers
 import Akb
@@ -28,11 +31,11 @@ import State
 
 -- got this idea from
 --  https://jaspervdj.be/posts/2015-03-13-practical-testing-in-haskell.html
-tests :: TestTree
-tests =
+tests :: Handle -> Handle -> Handle -> TestTree
+tests outHandle effectiveModifiersOutHandle inHandle =
   testGroup
     "State"
-    [ testCase "testKeyCodeToKeySymTranslations" testKeyCodeToKeySymTranslations
+    [ testCase "testKeyCodeToKeySymTranslations" (testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle)
 --    [ testCase "testIdentifyStateChanges01" testIdentifyStateChanges01
 --     , testCase "testIdentifyStateChanges02" testIdentifyStateChanges02
 --     , testCase "testIdentifyStateChanges03" testIdentifyStateChanges03
@@ -66,28 +69,39 @@ tests =
 --     , testCase "testNonStickyLatching02" testNonStickyLatching02
     ]
 
-testKeyCodeToKeySymTranslations :: Assertion
-testKeyCodeToKeySymTranslations =
-  mapM_ (\(kc,g) -> testKeyCodeToKeySymTranslation kc (firstKeySymbolOfGroup g))
+testKeyCodeToKeySymTranslations :: Handle -> Handle -> Handle -> Assertion
+testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle =
+  mapM_ (\(kc,g) -> testKeyCodeToKeySymTranslation outHandle effectiveModifiersOutHandle inHandle kc (firstKeySymbolOfGroup g))
     customDvorakKeymap
 
 firstKeySymbolOfGroup :: Group -> Maybe KeySymbol
 firstKeySymbolOfGroup (Group kss) = kss V.!? 0
+firstKeySymbolOfGroup (Groups _ kss) = kss V.!? 0 >>= firstKeySymbolOfGroup
 
-testKeyCodeToKeySymTranslation :: KeyCode -> Maybe KeySymbol -> Assertion
-testKeyCodeToKeySymTranslation kc Nothing = return ()
-testKeyCodeToKeySymTranslation kc (Just ksj = do
-  BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/in"
-    (BS.intercalate "," ["100,100,0", (cs . GHC.Show.show) kc, "1\n"])
-  contents <- BS.readFile "/home/j/dev/apps/durden-arcan/kbdfs/out"
-  contents @?=
-    (BS.intercalate ","
-      ["100,100,1", (cs . GHC.Show.show) kc , "1", (cs . GHC.Show.show) ks , "0", (cs . GHC.Show.show) ks , (cs . GHC.Show.show) ks , (cs . GHC.Show.show) ks ,"\n"])
-  BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/in"
-    (BS.intercalate "," ["100,100,0", (cs . GHC.Show.show) kc, "0\n"])
-  contents <- BS.readFile "/home/j/dev/apps/durden-arcan/kbdfs/out"
-  contents @?=
-    (BS.intercalate "," ["100,100,0", (cs . GHC.Show.show) kc, ",0,0,0,0,0,0\n"])
+testKeyCodeToKeySymTranslation :: Handle -> Handle -> Handle -> KeyCode -> Maybe KeySymbol -> Assertion
+testKeyCodeToKeySymTranslation _ _ _ _ Nothing = return ()
+testKeyCodeToKeySymTranslation outHandle effectiveModifiersOutHandle inHandle kc (Just ks) = do
+  BS.hPut inHandle
+    (BS.intercalate "," ["100,100,1", show kc, "1\n"])
+  hFlush inHandle
+  pressResponse <- BS.hGetSome outHandle 8192
+  pressModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
+  pressResponse @?=
+   BS.snoc
+    ( BS.intercalate ","
+      ["100,100,1", show kc , "1", (show . unKeySymbol) ks , chomp pressModifiersResponse , (show . fst . keySymbolToUTF8) ks , (show . snd . keySymbolToUTF8) ks]) (BSI.c2w '\n')
+  BS.hPut inHandle
+    (BS.intercalate "," ["100,100,1", show kc, "0\n"])
+  hFlush inHandle
+  releaseResponse <- BS.hGetSome outHandle 8192
+  releaseModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
+  releaseResponse @?=
+    BS.intercalate "," ["100,100,1", show kc, "0,0",chomp releaseModifiersResponse,"0,0\n"]
+
+chomp :: ByteString -> ByteString
+chomp bs
+  | last bs == BSI.c2w '\n' = init bs
+  | otherwise = bs
 
 -- testIdentifyStateChanges01 :: Assertion
 -- testIdentifyStateChanges01 =

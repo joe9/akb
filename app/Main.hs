@@ -5,7 +5,6 @@ module Main where
 
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString                  as BS
-import qualified Data.ByteString.Char8            as BSC
 import qualified Data.ByteString.Internal         as BSI (c2w)
 import           Data.Default
 import           Data.Maybe
@@ -13,10 +12,8 @@ import           Data.Serialize
 import           Data.String.Conversions
 import qualified Data.Text.IO                     as TIO
 import qualified Data.Vector                      as V
-import           GHC.Show
 import           Network.Simple.TCP
-import           Protolude                        hiding (State, show,
-                                                   state)
+import           Protolude                        hiding (State, state)
 import           System.Posix.ByteString.FilePath
 
 -- import           Text.Groom
@@ -122,20 +119,17 @@ inFileWrite _ _ bs _ _ c = do
     Right (Input e m t kcode dir) -> do
       writeToOpenChannelsOfFSItemAtIndex 2 bs (cFids c)
       case keyEvent (cUserState c) kcode dir of
-        (Nothing, _) ->
-          BSC.putStrLn "inFileWrite: lookup returned nothing" >>
-          return ((Right . fromIntegral . BS.length) bs, c)
-        (Just (ks, mods, utf32, utf8), state) -> do
+        (Nothing, state) -> do
           let fids = cFids c
-              kcodebs = (putByteString . cs . show) kcode
-              dirvbs = (putByteString . cs . show . fromEnum) dir -- dirbs = (putByteString . cs . show) dir
-              ksbs = (putByteString . cs . show . unKeySymbol) ks
-              modsbs = (putByteString . cs . show) mods
-              utf32bs = (putByteString . cs . show) utf32
-              utf8bs = (putByteString . cs . show) utf8
-              ebs = (putByteString . cs . show) e
-              mbs = (putByteString . cs . show) m
-              tbs = (putByteString . cs . show) t
+              kcodebs = (putByteString . show) kcode
+              dirvbs = (putByteString . show . fromEnum) dir
+              ksbs = (putByteString . show) (0 :: Int)
+              modsbs = (putByteString . show . sEffectiveModifiers) state
+              utf32bs = (putByteString . show)(0 :: Int)
+              utf8bs = (putByteString . show) (0 :: Int)
+              ebs = (putByteString . show) e
+              mbs = (putByteString . show) m
+              tbs = (putByteString . show) t
               toOut =
                 BS.snoc
                   (BS.intercalate
@@ -153,7 +147,67 @@ inFileWrite _ _ bs _ _ c = do
                         , utf8bs
                         ]))
                   (BSI.c2w '\n')
-              toModifiersEffectiveOut = runPut modsbs
+              toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
+          -- write to all /out read channels
+          writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
+          -- write to all /modifiers/effective/out read channels
+          writeToOpenChannelsOfFSItemAtIndex 6 toModifiersEffectiveOut fids
+          -- write to all /modifiers/depressed/out read channels
+          let toModifiersDepressedOut =
+                (runPut . putWord32le . sDepressedModifiers) state
+          writeToOpenChannelsOfFSItemAtIndex 8 toModifiersDepressedOut fids
+          -- write to all /modifiers/latched/out read channels
+          let toModifiersLatchedOut =
+                (runPut . putWord32le . sLatchedModifiers) state
+          writeToOpenChannelsOfFSItemAtIndex 10 toModifiersLatchedOut fids
+          -- write to all /modifiers/locked/out read channels
+          let toModifiersLockedOut =
+                (runPut . putWord32le . sLockedModifiers) state
+          writeToOpenChannelsOfFSItemAtIndex 12 toModifiersLockedOut fids
+          -- write to all /group/effective/out read channels
+          let toGroupEffectiveOut =
+                (runPut . putWord32le . sEffectiveGroup) state
+          writeToOpenChannelsOfFSItemAtIndex 15 toGroupEffectiveOut fids
+          -- write to all /group/depressed/out read channels
+          let toGroupDepressedOut =
+                (runPut . putWord32le . sDepressedGroup) state
+          writeToOpenChannelsOfFSItemAtIndex 17 toGroupDepressedOut fids
+          -- write to all /group/latched/out read channels
+          let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
+          writeToOpenChannelsOfFSItemAtIndex 19 toGroupLatchedOut fids
+          -- write to all /group/locked/out read channels
+          let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
+          writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
+          return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
+        (Just (ks, mods, utf32, utf8), state) -> do
+          let fids = cFids c
+              kcodebs = (putByteString . show) kcode
+              dirvbs = (putByteString . show . fromEnum) dir -- dirbs = (putByteString . cs . show) dir
+              ksbs = (putByteString . show . unKeySymbol) ks
+              modsbs = (putByteString . show) mods
+              utf32bs = (putByteString . show) utf32
+              utf8bs = (putByteString . show) utf8
+              ebs = (putByteString . show) e
+              mbs = (putByteString . show) m
+              tbs = (putByteString . show) t
+              toOut =
+                BS.snoc
+                  (BS.intercalate
+                     ","
+                     (fmap
+                        runPut
+                        [ ebs
+                        , mbs
+                        , tbs
+                        , kcodebs
+                        , dirvbs
+                        , ksbs
+                        , modsbs
+                        , utf32bs
+                        , utf8bs
+                        ]))
+                  (BSI.c2w '\n')
+              toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
           -- write to all /out read channels
           writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
           -- write to all /modifiers/effective/out read channels
@@ -186,7 +240,6 @@ inFileWrite _ _ bs _ _ c = do
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
---           writeToOpenChannelsOfFSItemAtIndex 3 "test string" fids
 -- data Input =
 --   Input KeyCode
 --         KeyDirection
