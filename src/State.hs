@@ -63,10 +63,11 @@ data ModifierMap = ModifierMap
   { mKeySymbol   :: KeySymbol
   , mModifier    :: Modifier
   , mWhenPressed :: State -> State
+  , mWhenReleased :: State -> State
   }
 
 instance Eq ModifierMap where
-  (ModifierMap k t _) == (ModifierMap k1 t1 _) = (k == k1) && (t == t1)
+  (ModifierMap k t _ _) == (ModifierMap k1 t1 _ _) = (k == k1) && (t == t1)
 
 type KeyCode = Word16
 
@@ -276,7 +277,8 @@ onKey XKB_KEY_Control_L =
     (ModifierMap
        XKB_KEY_Control_L
        Control
-       (pressModifier XKB_KEY_Control_L Control))
+       (pressModifier XKB_KEY_Control_L Control)
+       (releaseModifier XKB_KEY_Control_L Control))
 onKey k = Right k
 
 -- Pressing Esc when having any locked modifiers releases all
@@ -319,7 +321,7 @@ releaseModifier _ m state =
 stateChangeOnPress :: State -> KeySymbol -> (KeySymbol, State)
 stateChangeOnPress state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap keysym modifier onPressFunction)
+    Left (ModifierMap keysym modifier onPressFunction _)
     -- not consuming modifiers when a modifier is the result, bug or feature?
     -- updateDepresseds does the same thing as the onPressFunction,
     --   remove it?
@@ -331,7 +333,7 @@ stateChangeOnPress state keysymbol =
 stateChangeOnRelease :: State -> KeySymbol -> State
 stateChangeOnRelease state keysymbol =
   case sOnKeyEvent state keysymbol of
-    Left (ModifierMap ks m _) -> (updateEffectives . releaseModifier ks m) state
+    Left (ModifierMap ks m _ onReleaseFunction) -> (updateEffectives . onReleaseFunction) state
     Right _ -> (updateEffectives . resetLatchesToDepresseds) state
 
 -- if there is no latch set for a depressed modifier, do nothing -- when non-sticky
