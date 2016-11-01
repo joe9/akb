@@ -69,16 +69,16 @@ int main() {
    unsigned char utf8[6] = {0,0,0,0,0,0} ;
    memset (utf8,0,6);
 
-   while (noOfItems = fscanf(readFile, "%li,%li,%hu,%hu,%i,%i,%hu,%i,%c\n", &t,&ms,&type,&code,&v,&ks,&modifiers,&utf32,&utf8[0])) {
+   while (9 == (noOfItems = fscanf(readFile, "%li,%li,%hu,%hu,%i,%i,%hu,%i,%c\n", &t,&ms,&type,&code,&v,&ks,&modifiers,&utf32,&utf8[0]))) {
       if(noOfItems == 9) {
 	 printf("from in file: %li,%li,%hu,%hu,%i,%i,%hu,%i,%s\n", t,ms,type,code,v,ks,modifiers,utf32,utf8);
-      } else if(errno == 0) {
-	 printf("No match.\n");
-	 break;
-      } else {
-	 perror("fscanf");
-	 break;
       }
+   }
+   if(errno == 0) {
+      printf("No match.\n");
+      printf("No of items: %zd.\n",noOfItems);
+   } else {
+      perror("fscanf");
    }
 
    int ret = fclose(readFile);
