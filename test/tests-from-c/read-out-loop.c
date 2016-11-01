@@ -4,7 +4,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 
+/* c man pages
+   http://www.iso-9899.info/wiki/Web_resources#Man_pages
+   https://www.kernel.org/doc/man-pages/ */
 int main() {
    char readpath[] = "/home/j/dev/apps/durden-arcan/kbdfs/out";
    int readfd = 0, ret = 0;
@@ -16,12 +20,16 @@ int main() {
       exit(EXIT_FAILURE);
    }
 
-   char buf[16];
+   char buf[32];
    size_t count = sizeof(buf);
    ssize_t bytes_read = 0;
+   memset (buf,0,count);
 
-   while (-1 != (bytes_read = read(readfd, buf, count - 1))){
-      printf("contents of %s\n",buf);
+   /* count - 1 for ensuring that there a trailing null character at
+    * the end */
+   while (-1 != (bytes_read = read(readfd, buf, count - 1))) {
+      buf[count] = 0;
+      printf("contents of %s",buf);
    }
    perror("read");
 

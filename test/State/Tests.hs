@@ -71,11 +71,12 @@ testKeyCodeToKeySymTranslations =
   mapM_ (\(kc,g) -> testKeyCodeToKeySymTranslation kc (firstKeySymbolOfGroup g))
     customDvorakKeymap
 
-firstKeySymbolOfGroup :: Group -> KeySymbol
-firstKeySymbolOfGroup (Group kss) = V.head kss
+firstKeySymbolOfGroup :: Group -> Maybe KeySymbol
+firstKeySymbolOfGroup (Group kss) = kss V.!? 0
 
-testKeyCodeToKeySymTranslation :: KeyCode -> KeySymbol -> Assertion
-testKeyCodeToKeySymTranslation kc ks = do
+testKeyCodeToKeySymTranslation :: KeyCode -> Maybe KeySymbol -> Assertion
+testKeyCodeToKeySymTranslation kc Nothing = return ()
+testKeyCodeToKeySymTranslation kc (Just ksj = do
   BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/in"
     (BS.intercalate "," ["100,100,0", (cs . GHC.Show.show) kc, "1\n"])
   contents <- BS.readFile "/home/j/dev/apps/durden-arcan/kbdfs/out"
