@@ -34,39 +34,39 @@ import KeySymbolDefinitions
 import Modifiers
 import State
 
+--   TIO.putStrLn
+--     (showKeySymbol ((getKeySymbol (pickInitialState "customDvorak") 10)))
+--   print (fromBitMask 0 :: [Modifier])
+--   print (fromBitMask 1 :: [Modifier])
+--   print (fromBitMask 2 :: [Modifier])
+--   print (fromBitMask 3 :: [Modifier])
+--   print (fromBitMask 4 :: [Modifier])
+--   print (fromBitMask 5 :: [Modifier])
+--   print (fromBitMask 6 :: [Modifier])
+--   print (fromBitMask 7 :: [Modifier])
+--   print (fromBitMask 255 :: [Modifier])
+--   print (fromBitMask 0 :: Maybe Modifier)
+--   print (fromBitMask 1 :: Maybe Modifier)
+--   print (fromBitMask 2 :: Maybe Modifier)
+--   print (fromBitMask 4 :: Maybe Modifier)
+--   case parseOnly inputParser "100,100,1,10,1\n" of
+--     Left e -> print e
+--     Right (Input _ _ _ kcode dir) ->
+--       print (keyEvent (pickInitialState "customDvorak") kcode dir)
+--   case parseOnly inputParser "100,100,1,10,1\r\n" of
+--     Left e -> print e
+--     Right (Input _ _ _ kcode dir) ->
+--       print (keyEvent (pickInitialState "customDvorak") kcode dir)
+--   case parseOnly inputParser "100,100,1,10,1" of
+--     Left e -> print e
+--     Right (Input _ _ _ kcode dir) ->
+--       print (keyEvent (pickInitialState "customDvorak") kcode dir)
 main :: IO ()
-main = do
-  TIO.putStrLn
-    (showKeySymbol ((getKeySymbol (pickInitialState "customDvorak") 10)))
-  print (fromBitMask 0 :: [Modifier])
-  print (fromBitMask 1 :: [Modifier])
-  print (fromBitMask 2 :: [Modifier])
-  print (fromBitMask 3 :: [Modifier])
-  print (fromBitMask 4 :: [Modifier])
-  print (fromBitMask 5 :: [Modifier])
-  print (fromBitMask 6 :: [Modifier])
-  print (fromBitMask 7 :: [Modifier])
-  print (fromBitMask 255 :: [Modifier])
-  print (fromBitMask 0 :: Maybe Modifier)
-  print (fromBitMask 1 :: Maybe Modifier)
-  print (fromBitMask 2 :: Maybe Modifier)
-  print (fromBitMask 4 :: Maybe Modifier)
-  case parseOnly inputParser "100,100,1,10,1\n" of
-    Left e -> print e
-    Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState "customDvorak") kcode dir)
-  case parseOnly inputParser "100,100,1,10,1\r\n" of
-    Left e -> print e
-    Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState "customDvorak") kcode dir)
-  case parseOnly inputParser "100,100,1,10,1" of
-    Left e -> print e
-    Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState "customDvorak") kcode dir)
+main =
   let context =
         (def :: Context State)
         {cFSItems = fsList, cUserState = pickInitialState "customDvorak"}
-  run9PServer context (Host "127.0.0.1") "5960"
+  in run9PServer context (Host "127.0.0.1") "5960"
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
