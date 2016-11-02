@@ -54,12 +54,22 @@ tests =
         --     , testCase "testOnKeyRelease01" testOnKeyRelease01
         --     , testCase "testOnKeyRelease02" testOnKeyRelease02
         --     , testCase "testOnKeyRelease03" testOnKeyRelease03
-        --     , testCase "testStickyLocking01" testStickyLocking01
-        --     , testCase "testStickyLocking02" testStickyLocking02
-        --     , testCase "testStickyLocking03" testStickyLocking03
-        --     , testCase "testStickyLocking04" testStickyLocking04
-        --     , testCase "testNonStickyLatching01" testNonStickyLatching01
-        --     , testCase "testNonStickyLatching02" testNonStickyLatching02
+            , testCaseSteps "testStickyShift" testStickyShift
+            , testCaseSteps "testStickyControlCycle" (testStickyModifierCycle 66 XKB_KEY_Control_L Control)
+            , testCaseSteps "testStickyShiftLCycle" (testStickyModifierCycle 50 XKB_KEY_Shift_L Shift)
+            , testCaseSteps "testStickyAltCycle" (testStickyModifierCycle 108 XKB_KEY_Alt_L Mod1)
+            , testCaseSteps "testStickyMetaCycle" (testStickyModifierCycle 64 XKB_KEY_Meta_L Mod3)
+            , testCaseSteps "testStickyControlOnce" (testStickyModifierOnce 66 XKB_KEY_Control_L Control)
+            , testCaseSteps "testStickyShiftLOnce" (testStickyModifierOnce 50 XKB_KEY_Shift_L Shift)
+            , testCaseSteps "testStickyAltOnce" (testStickyModifierOnce 108 XKB_KEY_Alt_L Mod1)
+            , testCaseSteps "testStickyMetaOnce" (testStickyModifierOnce 64 XKB_KEY_Meta_L Mod3)
+            , testCaseSteps "testStickyShiftAlphabet" testStickyShiftAlphabet
+            , testCaseSteps "testStickyShiftLockAlphabet" testStickyShiftLockAlphabet
+--             , testCase "testStickyLocking02" testStickyLocking02
+--             , testCase "testStickyLocking03" testStickyLocking03
+--             , testCase "testStickyLocking04" testStickyLocking04
+--             , testCase "testNonStickyLatching01" testNonStickyLatching01
+--             , testCase "testNonStickyLatching02" testNonStickyLatching02
             ]
 
 testKeyCodeToKeySymTranslations :: IsString a => (a -> IO()) -> Assertion
@@ -301,26 +311,243 @@ testShiftLevelAlphabet02 step = do
 --       -- too, so both should be released
 --   in (onKeyRelease 9 original) @?= (UpdatedStateComponents 0b1010, expected)
 
--- -- shift twice should become locked with sticky on
--- -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
--- testStickyLocking01 :: Assertion
--- testStickyLocking01 =
---   let original =
---         (pickInitialState 1)
---         { sDepressedModifiers = setModifier 0 Shift
---         , sEffectiveModifiers = setModifier 0 Shift
---         , sLatchedModifiers = setModifier 0 Shift
---         }
---       s = original
---       expected =
---         original
---         { sDepressedModifiers = setModifier (sDepressedModifiers s) Shift
---         , sEffectiveModifiers = setModifier (sEffectiveModifiers s) Shift
---         , sLatchedModifiers = 0
---         , sLockedModifiers = setModifier 0 Shift
---         }
---   in (onKeyPress 50 original) @?=
---      (identifyStateChanges original expected, expected)
+-- shift twice should become locked with sticky on
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+testStickyShift :: IsString a => (a -> IO()) -> Assertion
+testStickyShift step = do
+  let (keysym,r,st) = onPress 50 (pickInitialState "customDvorakSticky")
+      (keysym1,r1,st1) = onPress 50 st
+      (keysym2,r2,st2) = onPress 50 st1
+      st3 = onRelease 50 st2
+  keysym @?= XKB_KEY_Shift_L
+  keysym1 @?= XKB_KEY_Shift_L
+  keysym2 @?= XKB_KEY_Shift_L
+  r @?= False
+  r1 @?= False
+  r2 @?= False
+  -- 1st press, latch
+  --step "1. checking effective modifiers"
+  sEffectiveModifiers st @?= setModifier 0 Shift
+  --step "1. checking depressed modifiers"
+  sDepressedModifiers st @?= setModifier 0 Shift
+  --step "1. checking latched modifiers"
+  sLatchedModifiers st @?= setModifier 0 Shift
+  --step "1. checking locked modifiers"
+  sLockedModifiers st @?= 0
+
+  -- 2nd press, lock
+  --step "2. checking effective modifiers"
+  sEffectiveModifiers st1 @?= setModifier 0 Shift
+  sDepressedModifiers st1 @?= setModifier 0 Shift
+  sLatchedModifiers st1 @?= 0
+  sLockedModifiers st1 @?= setModifier 0 Shift
+
+  -- 3rd press, unlock
+  --step "3. checking effective modifiers"
+  sEffectiveModifiers st2 @?= setModifier 0 Shift
+  sDepressedModifiers st2 @?= setModifier 0 Shift
+  sLatchedModifiers st2 @?= 0
+  sLockedModifiers st2 @?= 0
+
+  -- on release, depressed and effective should be cleared
+  --step "4. checking effective modifiers"
+  sEffectiveModifiers st3 @?= 0
+  sDepressedModifiers st3 @?= 0
+  sLatchedModifiers st3 @?= 0
+  sLockedModifiers st3 @?= 0
+
+-- shift twice should become locked with sticky on
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+testStickyModifierCycle :: IsString a => KeyCode -> KeySymbol -> Modifier -> (a -> IO()) -> Assertion
+testStickyModifierCycle keycode keySymbol modifier step = do
+  let (keysym,r,st) = onPress keycode (pickInitialState "customDvorakSticky")
+      (keysym1,r1,st1) = onPress keycode st
+      (keysym2,r2,st2) = onPress keycode st1
+      st3 = onRelease keycode st2
+  keysym @?= keySymbol
+  keysym1 @?= keySymbol
+  keysym2 @?= keySymbol
+  r @?= False
+  r1 @?= False
+  r2 @?= False
+  -- 1st press, latch
+  --step "1. checking effective modifiers"
+  sEffectiveModifiers st @?= setModifier 0 modifier
+  --step "1. checking depressed modifiers"
+  sDepressedModifiers st @?= setModifier 0 modifier
+  --step "1. checking latched modifiers"
+  sLatchedModifiers st @?= setModifier 0 modifier
+  --step "1. checking locked modifiers"
+  sLockedModifiers st @?= 0
+
+  -- 2nd press, lock
+  --step "2. checking effective modifiers"
+  sEffectiveModifiers st1 @?= setModifier 0 modifier
+  sDepressedModifiers st @?= setModifier 0 modifier
+  sLatchedModifiers st1 @?= 0
+  sLockedModifiers st1 @?= setModifier 0 modifier
+
+  -- 3rd press, unlock
+  --step "3. checking effective modifiers"
+  sEffectiveModifiers st2 @?= setModifier 0 modifier
+  sDepressedModifiers st2 @?= setModifier 0 modifier
+  sLatchedModifiers st2 @?= 0
+  sLockedModifiers st2 @?= 0
+
+  -- on release, depressed and effective should be cleared
+  --step "4. checking effective modifiers"
+  sEffectiveModifiers st3 @?= 0
+  sDepressedModifiers st3 @?= 0
+  sLatchedModifiers st3 @?= 0
+  sLockedModifiers st3 @?= 0
+
+-- shift twice should become locked with sticky on
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+-- keycode for a = 38
+testStickyModifierOnce :: IsString a => KeyCode -> KeySymbol -> Modifier -> (a -> IO()) -> Assertion
+testStickyModifierOnce keycode keySymbol modifier step = do
+  let (keysym,r,st) = onPress keycode (pickInitialState "customDvorakSticky")
+      st1 = onRelease keycode st
+  keysym @?= keySymbol
+  r @?= False
+  -- 1st press, latch
+  --step "1. checking effective modifiers"
+  sEffectiveModifiers st @?= setModifier 0 modifier
+  --step "1. checking depressed modifiers"
+  sDepressedModifiers st @?= setModifier 0 modifier
+  --step "1. checking latched modifiers"
+  sLatchedModifiers st @?= setModifier 0 modifier
+  --step "1. checking locked modifiers"
+  sLockedModifiers st @?= 0
+
+  -- on release, depressed and effective should be cleared
+  --step "2. checking effective modifiers"
+  sEffectiveModifiers st1 @?= setModifier 0 modifier
+  sDepressedModifiers st1 @?= 0
+  sLatchedModifiers st1 @?= setModifier 0 modifier
+  sLockedModifiers st1 @?= 0
+
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+-- keycode for a = 38
+testStickyShiftAlphabet :: IsString a => (a -> IO()) -> Assertion
+testStickyShiftAlphabet step = do
+  let (keysym,r,st) = onPress 50 (pickInitialState "customDvorakSticky")
+      st1 = onRelease 50 st
+      (keysym2,r2,st2) = onPress 38 st1
+  keysym @?= XKB_KEY_Shift_L
+  keysym2 @?= XKB_KEY_A
+  r @?= False
+  r2 @?= True
+  -- 1st press, latch
+  -- step "1. checking effective modifiers"
+  sEffectiveModifiers st @?= setModifier 0 Shift
+  -- step "1. checking depressed modifiers"
+  sDepressedModifiers st @?= setModifier 0 Shift
+  -- step "1. checking latched modifiers"
+  sLatchedModifiers st @?= setModifier 0 Shift
+  -- step "1. checking locked modifiers"
+  sLockedModifiers st @?= 0
+
+  -- release
+  -- step "2. checking effective modifiers"
+  sEffectiveModifiers st1 @?= setModifier 0 Shift
+  -- step "2. checking depressed modifiers"
+  sDepressedModifiers st1 @?= 0
+  -- step "2. checking latched modifiers"
+  sLatchedModifiers st1 @?= setModifier 0 Shift
+  -- step "2. checking locked modifiers"
+  sLockedModifiers st1 @?= 0
+
+  -- press alphabet
+  -- step "3. checking effective modifiers"
+  sEffectiveModifiers st2 @?= 0
+  -- step "3. checking depressed modifiers"
+  sDepressedModifiers st2 @?= 0
+  -- step "3. checking latched modifiers"
+  sLatchedModifiers st2 @?= 0
+  -- step "3. checking locked modifiers"
+  sLockedModifiers st2 @?= 0
+
+-- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift
+-- keycode for a = 38
+testStickyShiftLockAlphabet :: IsString a => (a -> IO()) -> Assertion
+testStickyShiftLockAlphabet step = do
+  let (keysym,r,st) = onPress 50 (pickInitialState "customDvorakSticky")
+      st1 = onRelease 50 st
+      (keysym2,r2,st2) = onPress 50 st1
+      st3 = onRelease 50 st2
+      (keysym4,r4,st4) = onPress 38 st3
+      st5 = onRelease 38 st4
+      (keysym6,r6,st6) = onPress 38 st5
+      st7 = onRelease 38 st6
+
+  keysym @?= XKB_KEY_Shift_L
+  keysym2 @?= XKB_KEY_Shift_L
+  keysym4 @?= XKB_KEY_A
+  keysym6 @?= XKB_KEY_A
+  r @?= False
+  r2 @?= False
+  r4 @?= True
+  r6 @?= True
+  -- 1st press, latch
+  -- step "1. checking effective modifiers"
+  sEffectiveModifiers st @?= setModifier 0 Shift
+  -- step "1. checking depressed modifiers"
+  sDepressedModifiers st @?= setModifier 0 Shift
+  -- step "1. checking latched modifiers"
+  sLatchedModifiers st @?= setModifier 0 Shift
+  -- step "1. checking locked modifiers"
+  sLockedModifiers st @?= 0
+
+  -- release
+  -- step "2. checking effective modifiers"
+  sEffectiveModifiers st1 @?= setModifier 0 Shift
+  -- step "2. checking depressed modifiers"
+  sDepressedModifiers st1 @?= 0
+  -- step "2. checking latched modifiers"
+  sLatchedModifiers st1 @?= setModifier 0 Shift
+  -- step "2. checking locked modifiers"
+  sLockedModifiers st1 @?= 0
+
+  -- 2nd press, lock
+  -- step "3. checking effective modifiers"
+  sEffectiveModifiers st2 @?= setModifier 0 Shift
+  -- step "3. checking depressed modifiers"
+  sDepressedModifiers st2 @?= setModifier 0 Shift
+  -- step "3. checking latched modifiers"
+  sLatchedModifiers st2 @?= 0
+  -- step "3. checking locked modifiers"
+  sLockedModifiers st2 @?= setModifier 0 Shift
+
+  -- release
+  -- step "4. checking effective modifiers"
+  sEffectiveModifiers st3 @?= setModifier 0 Shift
+  -- step "4. checking depressed modifiers"
+  sDepressedModifiers st3 @?= 0
+  -- step "4. checking latched modifiers"
+  sLatchedModifiers st3 @?= 0
+  -- step "4. checking locked modifiers"
+  sLockedModifiers st3 @?= setModifier 0 Shift
+
+  -- press alphabet
+  -- step "5. checking effective modifiers"
+  sEffectiveModifiers st6 @?= setModifier 0 Shift
+  -- step "5. checking depressed modifiers"
+  sDepressedModifiers st6 @?= 0
+  -- step "5. checking latched modifiers"
+  sLatchedModifiers st6 @?= 0
+  -- step "5. checking locked modifiers"
+  sLockedModifiers st6 @?= setModifier 0 Shift
+
+  -- press alphabet
+  -- step "6. checking effective modifiers"
+  sEffectiveModifiers st7 @?= setModifier 0 Shift
+  -- step "6. checking depressed modifiers"
+  sDepressedModifiers st7 @?= 0
+  -- step "6. checking latched modifiers"
+  sLatchedModifiers st7 @?= 0
+  -- step "6. checking locked modifiers"
+  sLockedModifiers st7 @?= setModifier 0 Shift
 
 -- -- locked shift loses lock with sticky on
 -- -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift

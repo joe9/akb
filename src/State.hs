@@ -173,7 +173,7 @@ instance Default State where
   def =
     State
       V.empty
-      onKeyTemplate
+      identifyModifiersDefault
       shiftIsLevelTwoCalculateLevel
       shiftIsLevelTwoConsumeModifiers
       identity
@@ -213,20 +213,17 @@ onStickyPressDefault mks state =
      ->
       ( keysym
       , False
-      , ((traceShowId .
-          updateEffectives .
-          traceShowId .
-          updateDepresseds modifier .
-          traceShowId . stickyPressModifier keysym modifier . traceShowId)
+      , ((updateEffectives .
+          stickyPressModifier keysym modifier . pressModifier keysym modifier)
            state))
-    Right keysym -> (keysym, True, state)
+    Right keysym ->
+      (keysym, True, (updateEffectives . resetLatchesToDepresseds) state)
 
 onStickyReleaseDefault :: Either ModifierMap KeySymbol -> State -> State
 onStickyReleaseDefault mks state =
   case mks of
-    Left (ModifierMap ks m) ->
-      traceShowId ((updateEffectives . stickyReleaseModifier ks m) state)
-    Right _ -> updateEffectives state
+    Left (ModifierMap ks m) -> (updateEffectives . releaseModifier ks m) state
+    Right _ -> state
 
 -- assuming all modifiers do not repeat
 onPressDefault :: Either ModifierMap KeySymbol
@@ -241,9 +238,7 @@ onPressDefault mks state =
      ->
       ( keysym
       , False
-      , ((updateEffectives .
-          updateDepresseds modifier . pressModifier keysym modifier)
-           state))
+      , ((updateEffectives . pressModifier keysym modifier) state))
     Right keysym -> (keysym, True, state)
 
 onReleaseDefault :: Either ModifierMap KeySymbol -> State -> State
@@ -307,17 +302,18 @@ lookupFromGroup level (Group v) =
     Nothing     -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
-onKeyTemplate :: KeySymbol -> Either ModifierMap KeySymbol
-onKeyTemplate XKB_KEY_Control_L = Left (ModifierMap XKB_KEY_Control_L Control)
-onKeyTemplate k = Right k
+identifyModifiersDefault :: KeySymbol -> Either ModifierMap KeySymbol
+identifyModifiersDefault XKB_KEY_Control_L =
+  Left (ModifierMap XKB_KEY_Control_L Control)
+identifyModifiersDefault k = Right k
 
 -- Pressing Esc when having any locked modifiers releases all
 clearStickyPresses :: State -> State
 clearStickyPresses state =
   state {sLockedModifiers = 0, sLatchedModifiers = 0, sDepressedModifiers = 0}
 
-stickyPressModifier :: KeySymbol -> Modifier -> State -> State
-stickyPressModifier _ m state
+stickyPressModifier1 :: KeySymbol -> Modifier -> State -> State
+stickyPressModifier1 _ m state
   | testModifier (sLockedModifiers state) m
    -- if the key is already locked, unlock it
    =
@@ -341,12 +337,28 @@ stickyPressModifier _ m state
     , sDepressedModifiers = setModifier (sDepressedModifiers state) m
     }
 
-stickyReleaseModifier :: KeySymbol -> Modifier -> State -> State
-stickyReleaseModifier _ _ state =
-  state {sLockedModifiers = 0, sLatchedModifiers = 0, sDepressedModifiers = 0}
+stickyPressModifier :: KeySymbol -> Modifier -> State -> State
+stickyPressModifier _ m state
+  | testModifier (sLockedModifiers state) m
+   -- if the key is already locked, unlock it
+   = state {sLockedModifiers = clearModifier (sLockedModifiers state) m}
+  | testModifier (sLatchedModifiers state) m
+   -- if the key was previously latched, lock it and remove the latch
+   =
+    state
+    { sLockedModifiers = setModifier (sLockedModifiers state) m
+    , sLatchedModifiers = clearModifier (sLatchedModifiers state) m
+    }
+  -- ensure that Latched have it
+  | otherwise =
+    state {sLatchedModifiers = setModifier (sLatchedModifiers state) m}
+
+stickyReleaseModifiers :: State -> State
+stickyReleaseModifiers state = state {sLatchedModifiers = 0}
 
 pressModifier :: KeySymbol -> Modifier -> State -> State
-pressModifier _ = updateDepresseds
+pressModifier _ modifier state =
+  state {sDepressedModifiers = setModifier (sDepressedModifiers state) modifier}
 
 releaseModifier :: KeySymbol -> Modifier -> State -> State
 releaseModifier _ m state =
@@ -376,10 +388,6 @@ updateEffectives state =
         state
         (sDepressedGroup state + sLatchedGroup state + sLockedGroup state)
   }
-
-updateDepresseds :: Modifier -> State -> State
-updateDepresseds modifier state =
-  state {sDepressedModifiers = setModifier (sDepressedModifiers state) modifier}
 
 group :: [KeySymbol] -> Group
 group = Group . V.fromList
