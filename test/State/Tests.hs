@@ -76,7 +76,7 @@ setInitialState = BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/ctl"
 useCustomDvorak :: Assertion
 useCustomDvorak = setInitialState "customDvorak"
 
-useCustomDvorakSticky :: ByteString -> Assertion
+useCustomDvorakSticky :: Assertion
 useCustomDvorakSticky = setInitialState "customDvorakSticky"
 
 testKeyCodeToKeySymTranslations :: Handle -> Handle -> Handle -> Assertion

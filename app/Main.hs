@@ -119,7 +119,7 @@ inFileWrite _ _ bs _ _ c = do
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
     -- write to all /echo read channels
     Right (Input e m t kcode dir) -> do
-      writeToOpenChannelsOfFSItemAtIndex 2 bs (cFids c)
+      writeToOpenChannelsOfFSItemAtIndex 3 bs (cFids c)
       case keyEvent (cUserState c) kcode dir of
         (Nothing, state) -> do
           let fids = cFids c
@@ -153,35 +153,35 @@ inFileWrite _ _ bs _ _ c = do
                   (BSI.c2w '\n')
               toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
           -- write to all /out read channels
-          writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
+          writeToOpenChannelsOfFSItemAtIndex 4 toOut fids
           -- write to all /modifiers/effective/out read channels
-          writeToOpenChannelsOfFSItemAtIndex 6 toModifiersEffectiveOut fids
+          writeToOpenChannelsOfFSItemAtIndex 7 toModifiersEffectiveOut fids
           -- write to all /modifiers/depressed/out read channels
           let toModifiersDepressedOut =
                 (runPut . putWord32le . sDepressedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 8 toModifiersDepressedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 9 toModifiersDepressedOut fids
           -- write to all /modifiers/latched/out read channels
           let toModifiersLatchedOut =
                 (runPut . putWord32le . sLatchedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 10 toModifiersLatchedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 11 toModifiersLatchedOut fids
           -- write to all /modifiers/locked/out read channels
           let toModifiersLockedOut =
                 (runPut . putWord32le . sLockedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 12 toModifiersLockedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 13 toModifiersLockedOut fids
           -- write to all /group/effective/out read channels
           let toGroupEffectiveOut =
                 (runPut . putWord32le . sEffectiveGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 15 toGroupEffectiveOut fids
+          writeToOpenChannelsOfFSItemAtIndex 16 toGroupEffectiveOut fids
           -- write to all /group/depressed/out read channels
           let toGroupDepressedOut =
                 (runPut . putWord32le . sDepressedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 17 toGroupDepressedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 18 toGroupDepressedOut fids
           -- write to all /group/latched/out read channels
           let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 19 toGroupLatchedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 20 toGroupLatchedOut fids
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 22 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
         (Just (ks, r, mods, utf32, utf8), state) -> do
           let fids = cFids c
@@ -215,35 +215,35 @@ inFileWrite _ _ bs _ _ c = do
                   (BSI.c2w '\n')
               toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
           -- write to all /out read channels
-          writeToOpenChannelsOfFSItemAtIndex 3 toOut fids
+          writeToOpenChannelsOfFSItemAtIndex 4 toOut fids
           -- write to all /modifiers/effective/out read channels
-          writeToOpenChannelsOfFSItemAtIndex 6 toModifiersEffectiveOut fids
+          writeToOpenChannelsOfFSItemAtIndex 7 toModifiersEffectiveOut fids
           -- write to all /modifiers/depressed/out read channels
           let toModifiersDepressedOut =
                 (runPut . putWord32le . sDepressedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 8 toModifiersDepressedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 9 toModifiersDepressedOut fids
           -- write to all /modifiers/latched/out read channels
           let toModifiersLatchedOut =
                 (runPut . putWord32le . sLatchedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 10 toModifiersLatchedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 11 toModifiersLatchedOut fids
           -- write to all /modifiers/locked/out read channels
           let toModifiersLockedOut =
                 (runPut . putWord32le . sLockedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 12 toModifiersLockedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 13 toModifiersLockedOut fids
           -- write to all /group/effective/out read channels
           let toGroupEffectiveOut =
                 (runPut . putWord32le . sEffectiveGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 15 toGroupEffectiveOut fids
+          writeToOpenChannelsOfFSItemAtIndex 16 toGroupEffectiveOut fids
           -- write to all /group/depressed/out read channels
           let toGroupDepressedOut =
                 (runPut . putWord32le . sDepressedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 17 toGroupDepressedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 18 toGroupDepressedOut fids
           -- write to all /group/latched/out read channels
           let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 19 toGroupLatchedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 20 toGroupLatchedOut fids
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
+          writeToOpenChannelsOfFSItemAtIndex 22 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
 ctlFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
