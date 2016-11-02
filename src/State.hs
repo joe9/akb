@@ -186,8 +186,8 @@ instance Default State where
       0
       0
       "default"
-      onPressTemplate
-      onReleaseTemplate
+      onPressDefault
+      onReleaseDefault
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
@@ -201,8 +201,34 @@ lookupKeyCode keycode state =
 type Repeat = Bool
 
 -- assuming all modifiers do not repeat
-onPressTemplate :: Either ModifierMap KeySymbol -> State -> (KeySymbol, Repeat, State)
-onPressTemplate mks state =
+onStickyPressDefault :: Either ModifierMap KeySymbol -> State -> (KeySymbol, Repeat, State)
+onStickyPressDefault mks state =
+        case mks of
+          Left (ModifierMap keysym modifier)
+          -- not consuming modifiers when a modifier is the result, bug or feature?
+          -- updateDepresseds does the same thing as the onPressFunction,
+          --   remove it?
+           ->
+              ( keysym
+              , False
+              , ((traceShowId .
+                  updateEffectives .
+                  traceShowId .
+                  updateDepresseds modifier . traceShowId
+                  . stickyPressModifier keysym modifier . traceShowId)
+                   state))
+          Right keysym -> (keysym, True, state)
+
+onStickyReleaseDefault :: Either ModifierMap KeySymbol -> State -> State
+onStickyReleaseDefault mks state =
+        case mks of
+          Left (ModifierMap ks m) ->
+            traceShowId (( updateEffectives . stickyReleaseModifier ks m) state)
+          Right _ -> updateEffectives state
+
+-- assuming all modifiers do not repeat
+onPressDefault :: Either ModifierMap KeySymbol -> State -> (KeySymbol, Repeat, State)
+onPressDefault mks state =
         case mks of
           Left (ModifierMap keysym modifier)
           -- not consuming modifiers when a modifier is the result, bug or feature?
@@ -219,8 +245,8 @@ onPressTemplate mks state =
                    state))
           Right keysym -> (keysym, True, state)
 
-onReleaseTemplate :: Either ModifierMap KeySymbol -> State -> State
-onReleaseTemplate mks state =
+onReleaseDefault :: Either ModifierMap KeySymbol -> State -> State
+onReleaseDefault mks state =
         case mks of
           Left (ModifierMap ks m) ->
             traceShowId (( updateEffectives . releaseModifier ks m) state)
@@ -315,6 +341,10 @@ stickyPressModifier _ m state
     { sLatchedModifiers = setModifier (sLatchedModifiers state) m
     , sDepressedModifiers = setModifier (sDepressedModifiers state) m
     }
+
+stickyReleaseModifier :: KeySymbol -> Modifier -> State -> State
+stickyReleaseModifier _ _ state =
+  state {sLockedModifiers = 0, sLatchedModifiers = 0, sDepressedModifiers = 0}
 
 pressModifier :: KeySymbol -> Modifier -> State -> State
 pressModifier _ = updateDepresseds

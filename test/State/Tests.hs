@@ -75,14 +75,14 @@ testKeyCodeToKeySymTranslation :: IsString a => KeyCode -> Maybe KeySymbol -> (a
 testKeyCodeToKeySymTranslation _ Nothing _ = return ()
 testKeyCodeToKeySymTranslation kc (Just ks) step = do
   let (keysym,_,st) = onPress kc (pickInitialState "customDvorak")
-  step "checking Keysymbol"
+--   step "checking Keysymbol"
   keysym @?= ks
   let st1 = onRelease kc st
-  step "checking effective modifiers"
+--   step "checking effective modifiers"
   sEffectiveModifiers st1 @?= 0
-  step "checking latched modifiers"
+--   step "checking latched modifiers"
   sLatchedModifiers st1 @?= 0
-  step "checking locked modifiers"
+--   step "checking locked modifiers"
   sLockedModifiers st1 @?= 0
 
 -- keycode for left shift = 50
@@ -91,15 +91,15 @@ testShiftLevelAlphabet01 :: IsString a => (a -> IO()) -> Assertion
 testShiftLevelAlphabet01 step = do
   let (keysym,_,st) = onPress 50 (pickInitialState "customDvorak")
       (keysym1,_,st1) = onPress 38 st
-  step "checking Shift Keysymbol"
+--   step "checking Shift Keysymbol"
   keysym @?= XKB_KEY_Shift_L
-  step "checking Keysymbol"
+--   step "checking Keysymbol"
   keysym1 @?= XKB_KEY_A
-  step "checking effective modifiers"
+--   step "checking effective modifiers"
   sEffectiveModifiers st1 @?= setModifier 0 Shift
-  step "checking latched modifiers"
+--   step "checking latched modifiers"
   sLatchedModifiers st1 @?= 0
-  step "checking locked modifiers"
+--   step "checking locked modifiers"
   sLockedModifiers st1 @?= 0
 
 -- keycode for left shift = 50

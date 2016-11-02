@@ -34,6 +34,8 @@ customDvorakSticky =
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
   , sName = "customDvorakSticky"
+  , sOnPress = onStickyPressDefault
+  , sOnRelease = onStickyReleaseDefault
   }
 
 -- instead of the below use evtest to get the actual keycodes
