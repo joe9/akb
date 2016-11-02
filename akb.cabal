@@ -72,6 +72,7 @@ executable akb-exe
                      , stm
                      , cereal
                      , network-simple
+                     , containers
   default-language:    Haskell2010
 
 test-suite akb-test

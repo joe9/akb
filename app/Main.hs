@@ -11,11 +11,13 @@ import           Data.Maybe
 import           Data.Serialize
 import           Data.String.Conversions
 import qualified Data.Text.IO                     as TIO
+import           Data.Tree
 import qualified Data.Vector                      as V
 import           Network.Simple.TCP
 import           Protolude                        hiding (State,
                                                    state)
 import           System.Posix.ByteString.FilePath
+import           System.Posix.FilePath
 
 -- import           Text.Groom
 import BitMask
@@ -62,46 +64,73 @@ import State
 --     Right (Input _ _ _ kcode dir) ->
 --       print (keyEvent (pickInitialState "customDvorak") kcode dir)
 main :: IO ()
-main =
-  let context =
-        (def :: Context State)
-        {cFSItems = fsList, cUserState = pickInitialState "customDvorak"}
-  in run9PServer context (Host "127.0.0.1") "5960"
+main = run9PServer akbContext (Host "127.0.0.1") "5960"
+
+-- showFSItems to look at the vector of FSItems
+akbContext :: Context State
+akbContext =
+  (def :: Context State)
+  { cFSItems = treeToFSItemsVector tree
+  , cUserState = pickInitialState "customDvorak"
+  }
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
 
--- TODO : add stAtime, stMtime, stUid, stGid and stMuid
--- TODO : use Data.Tree to build this
---   https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/Simple%20examples#data-tree
-fsList :: V.Vector (FSItem (Context State))
-fsList =
-  V.fromList
-    [ directory "/" 0
-    , ctlFile "/ctl" 1
-    , inFile "/in" 2
-    , readOnlyFile "/echo" 3
-    , readOnlyFile "/out" 4
-    , directory "/modifiers/" 5
-    , directory "/modifiers/effective" 6
-    , readOnlyFile "/modifiers/effective/out" 7
-    , directory "/modifiers/depressed" 8
-    , readOnlyFile "/modifiers/depressed/out" 9
-    , directory "/modifiers/latched" 10
-    , readOnlyFile "/modifiers/latched/out" 11
-    , directory "/modifiers/locked" 12
-    , readOnlyFile "/modifiers/locked/out" 13
-    , directory "/group/" 14
-    , directory "/group/effective" 15
-    , readOnlyFile "/group/effective/out" 16
-    , directory "/group/depressed" 17
-    , readOnlyFile "/group/depressed/out" 18
-    , directory "/group/latched" 19
-    , readOnlyFile "/group/latched/out" 20
-    , directory "/group/locked" 21
-    , readOnlyFile "/group/locked/out" 22
+-- putting the out and echo files at the top as they will be most
+--   written-to files and hence searched for the most.
+-- could avoid this by using a Data.Map with key = hashable value of absolute name
+tree :: Tree ((RawFilePath -> FSItemsIndex -> FSItem (Context State)), RawFilePath)
+tree =
+  Node
+    (directory, "/")
+    [ Node (readOnlyFile, "out") []
+    , Node (readOnlyFile, "echo") []
+    , Node (ctlFile, "ctl") []
+    , Node (inFile, "in") []
+    , Node
+        (directory, "modifiers")
+        [ Node (directory, "effective") [Node (readOnlyFile, "out") []]
+        , Node (directory, "depressed") [Node (readOnlyFile, "out") []]
+        , Node (directory, "latched") [Node (readOnlyFile, "out") []]
+        , Node (directory, "locked") [Node (readOnlyFile, "out") []]
+        ]
+    , Node
+        (directory, "group")
+        [ Node (directory, "effective") [Node (readOnlyFile, "out") []]
+        , Node (directory, "depressed") [Node (readOnlyFile, "out") []]
+        , Node (directory, "latched") [Node (readOnlyFile, "out") []]
+        , Node (directory, "locked") [Node (readOnlyFile, "out") []]
+        ]
     ]
 
+-- TODO : add stAtime, stMtime, stUid, stGid and stMuid
+--   https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/Simple%20examples#data-tree
+--   V.fromList
+--     [ directory "/" 0
+--     , ctlFile "/ctl" 1
+--     , inFile "/in" 2
+--     , readOnlyFile "/echo" 3
+--     , readOnlyFile "/out" 4
+--     , directory "/modifiers/" 5
+--     , directory "/modifiers/effective" 6
+--     , readOnlyFile "/modifiers/effective/out" 7
+--     , directory "/modifiers/depressed" 8
+--     , readOnlyFile "/modifiers/depressed/out" 9
+--     , directory "/modifiers/latched" 10
+--     , readOnlyFile "/modifiers/latched/out" 11
+--     , directory "/modifiers/locked" 12
+--     , readOnlyFile "/modifiers/locked/out" 13
+--     , directory "/group/" 14
+--     , directory "/group/effective" 15
+--     , readOnlyFile "/group/effective/out" 16
+--     , directory "/group/depressed" 17
+--     , readOnlyFile "/group/depressed/out" 18
+--     , directory "/group/latched" 19
+--     , readOnlyFile "/group/latched/out" 20
+--     , directory "/group/locked" 21
+--     , readOnlyFile "/group/locked/out" 22
+--     ]
 inFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
 inFile name index =
   FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
@@ -115,15 +144,13 @@ inFileWrite
   -> (Context State)
   -> IO (Either NineError Count, (Context State))
 inFileWrite _ _ bs _ _ c = do
+  writeToOpenChannelsOf "/echo" bs c
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
-    -- write to all /echo read channels
     Right (Input e m t kcode dir) -> do
-      writeToOpenChannelsOfFSItemAtIndex 3 bs (cFids c)
       case keyEvent (cUserState c) kcode dir of
         (Nothing, state) -> do
-          let fids = cFids c
-              kcodebs = (putByteString . show) kcode
+          let kcodebs = (putByteString . show) kcode
               dirvbs = (putByteString . show . fromEnum) dir
               ksbs = (putByteString . show) (0 :: Int)
               modsbs = (putByteString . show . sEffectiveModifiers) state
@@ -153,39 +180,44 @@ inFileWrite _ _ bs _ _ c = do
                   (BSI.c2w '\n')
               toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
           -- write to all /out read channels
-          writeToOpenChannelsOfFSItemAtIndex 4 toOut fids
+          writeToOpenChannelsOf "/out" toOut c
           -- write to all /modifiers/effective/out read channels
-          writeToOpenChannelsOfFSItemAtIndex 7 toModifiersEffectiveOut fids
+          writeToOpenChannelsOf
+            "/modifiers/effective/out"
+            toModifiersEffectiveOut
+            c
           -- write to all /modifiers/depressed/out read channels
           let toModifiersDepressedOut =
                 (runPut . putWord32le . sDepressedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 9 toModifiersDepressedOut fids
+          writeToOpenChannelsOf
+            "/modifiers/depressed/out"
+            toModifiersDepressedOut
+            c
           -- write to all /modifiers/latched/out read channels
           let toModifiersLatchedOut =
                 (runPut . putWord32le . sLatchedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 11 toModifiersLatchedOut fids
+          writeToOpenChannelsOf "/modifiers/latched/out" toModifiersLatchedOut c
           -- write to all /modifiers/locked/out read channels
           let toModifiersLockedOut =
                 (runPut . putWord32le . sLockedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 13 toModifiersLockedOut fids
+          writeToOpenChannelsOf "/modifiers/locked/out" toModifiersLockedOut c
           -- write to all /group/effective/out read channels
           let toGroupEffectiveOut =
                 (runPut . putWord32le . sEffectiveGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 16 toGroupEffectiveOut fids
+          writeToOpenChannelsOf "/group/effective/out" toGroupEffectiveOut c
           -- write to all /group/depressed/out read channels
           let toGroupDepressedOut =
                 (runPut . putWord32le . sDepressedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 18 toGroupDepressedOut fids
+          writeToOpenChannelsOf "/group/depressed/out" toGroupDepressedOut c
           -- write to all /group/latched/out read channels
           let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 20 toGroupLatchedOut fids
+          writeToOpenChannelsOf "/group/latched/out" toGroupLatchedOut c
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 22 toGroupLockedOut fids
+          writeToOpenChannelsOf "/group/locked/out" toGroupLockedOut c
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
         (Just (ks, r, mods, utf32, utf8), state) -> do
-          let fids = cFids c
-              kcodebs = (putByteString . show) kcode
+          let kcodebs = (putByteString . show) kcode
               dirvbs = (putByteString . show . fromEnum) dir -- dirbs = (putByteString . cs . show) dir
               ksbs = (putByteString . show . unKeySymbol) ks
               modsbs = (putByteString . show) mods
@@ -215,35 +247,41 @@ inFileWrite _ _ bs _ _ c = do
                   (BSI.c2w '\n')
               toModifiersEffectiveOut = BS.snoc (runPut modsbs) (BSI.c2w '\n')
           -- write to all /out read channels
-          writeToOpenChannelsOfFSItemAtIndex 4 toOut fids
+          writeToOpenChannelsOf "/out" toOut c
           -- write to all /modifiers/effective/out read channels
-          writeToOpenChannelsOfFSItemAtIndex 7 toModifiersEffectiveOut fids
+          writeToOpenChannelsOf
+            "/modifiers/effective/out"
+            toModifiersEffectiveOut
+            c
           -- write to all /modifiers/depressed/out read channels
           let toModifiersDepressedOut =
                 (runPut . putWord32le . sDepressedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 9 toModifiersDepressedOut fids
+          writeToOpenChannelsOf
+            "/modifiers/depressed/out"
+            toModifiersDepressedOut
+            c
           -- write to all /modifiers/latched/out read channels
           let toModifiersLatchedOut =
                 (runPut . putWord32le . sLatchedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 11 toModifiersLatchedOut fids
+          writeToOpenChannelsOf "/modifiers/latched/out" toModifiersLatchedOut c
           -- write to all /modifiers/locked/out read channels
           let toModifiersLockedOut =
                 (runPut . putWord32le . sLockedModifiers) state
-          writeToOpenChannelsOfFSItemAtIndex 13 toModifiersLockedOut fids
+          writeToOpenChannelsOf "/modifiers/locked/out" toModifiersLockedOut c
           -- write to all /group/effective/out read channels
           let toGroupEffectiveOut =
                 (runPut . putWord32le . sEffectiveGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 16 toGroupEffectiveOut fids
+          writeToOpenChannelsOf "/group/effective/out" toGroupEffectiveOut c
           -- write to all /group/depressed/out read channels
           let toGroupDepressedOut =
                 (runPut . putWord32le . sDepressedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 18 toGroupDepressedOut fids
+          writeToOpenChannelsOf "/group/depressed/out" toGroupDepressedOut c
           -- write to all /group/latched/out read channels
           let toGroupLatchedOut = (runPut . putWord32le . sLatchedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 20 toGroupLatchedOut fids
+          writeToOpenChannelsOf "/group/latched/out" toGroupLatchedOut c
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
-          writeToOpenChannelsOfFSItemAtIndex 22 toGroupLockedOut fids
+          writeToOpenChannelsOf "/group/locked/out" toGroupLockedOut c
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
 ctlFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
