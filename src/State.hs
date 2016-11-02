@@ -237,11 +237,7 @@ onPressDefault mks state =
            ->
               ( keysym
               , False
-              , ((traceShowId .
-                  updateEffectives .
-                  traceShowId .
-                  updateDepresseds modifier . traceShowId
-                  . pressModifier keysym modifier . traceShowId)
+              , ((updateEffectives . updateDepresseds modifier . pressModifier keysym modifier)
                    state))
           Right keysym -> (keysym, True, state)
 
@@ -249,8 +245,8 @@ onReleaseDefault :: Either ModifierMap KeySymbol -> State -> State
 onReleaseDefault mks state =
         case mks of
           Left (ModifierMap ks m) ->
-            traceShowId (( updateEffectives . releaseModifier ks m) state)
-          Right _ -> (updateEffectives) state
+            (updateEffectives . releaseModifier ks m) state
+          Right _ -> updateEffectives state
 
 onPress :: KeyCode -> State -> (KeySymbol, Repeat, State)
 onPress keycode state =
