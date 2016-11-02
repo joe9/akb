@@ -20,7 +20,7 @@ customDvorak :: State
 customDvorak =
   def
   { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
-  , sOnKeyEvent = whatToDoWithKeySymbol
+  , sIdentifyModifiers = whatToDoWithKeySymbol
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
   , sName = "customDvorak"
@@ -30,7 +30,7 @@ customDvorakSticky :: State
 customDvorakSticky =
   def
   { sKeymap = keyCodeAndGroupsToKeymap customDvorakKeymap
-  , sOnKeyEvent = stickyWhatToDoWithKeySymbol
+  , sIdentifyModifiers = stickyWhatToDoWithKeySymbol
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
   , sName = "customDvorakSticky"

@@ -2,16 +2,27 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module State.Tests
+module Akb.Tests
   ( tests
   ) where
 
 import Data.Bits
+import           System.Posix.ByteString.FilePath
+import Data.ByteString
+import           Control.Exception.Safe
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
+import qualified Data.ByteString.Internal         as BSI (c2w)
 import qualified Data.Vector as V
+import Data.Default
 import Data.Foldable
+import Data.String.Conversions
 import Test.Tasty
 import Test.Tasty.HUnit
-import Protolude
+import Protolude hiding (bracket)
+import qualified System.IO                        as IO
+import           System.IO                        hiding
+                                                   (withBinaryFile)
 
 import BitMask
 
@@ -27,10 +38,10 @@ import State
 tests :: TestTree
 tests =
       testGroup
-            "State"
-            [ testCaseSteps "testKeyCodeToKeySymTranslations" testKeyCodeToKeySymTranslations
-            , testCaseSteps "testShiftLevelAlphabet01" testShiftLevelAlphabet01
-            , testCaseSteps "testShiftLevelAlphabet02" testShiftLevelAlphabet02
+            "Akb"
+            [ testCase "useCustomDvorak" useCustomDvorak
+            , testCase "testKeyCodeToKeySymTranslations"
+              (withHandles testKeyCodeToKeySymTranslations)
         --    , testCase "testIdentifyStateChanges01" testIdentifyStateChanges01
         --     , testCase "testIdentifyStateChanges02" testIdentifyStateChanges02
         --     , testCase "testIdentifyStateChanges03" testIdentifyStateChanges03
@@ -54,6 +65,8 @@ tests =
         --     , testCase "testOnKeyRelease01" testOnKeyRelease01
         --     , testCase "testOnKeyRelease02" testOnKeyRelease02
         --     , testCase "testOnKeyRelease03" testOnKeyRelease03
+        --     , testCase "testShiftLevelAlphabet01" testShiftLevelAlphabet01
+        --     , testCase "testShiftLevelAlphabet02" testShiftLevelAlphabet02
         --     , testCase "testStickyLocking01" testStickyLocking01
         --     , testCase "testStickyLocking02" testStickyLocking02
         --     , testCase "testStickyLocking03" testStickyLocking03
@@ -62,57 +75,76 @@ tests =
         --     , testCase "testNonStickyLatching02" testNonStickyLatching02
             ]
 
-testKeyCodeToKeySymTranslations :: IsString a => (a -> IO()) -> Assertion
-testKeyCodeToKeySymTranslations step =
-  mapM_ (\(kc,g) -> testKeyCodeToKeySymTranslation kc (firstKeySymbolOfGroup g) step)
+-- below from System.IO
+-- | @'withBinaryFile' name mode act@ opens a file using 'openBinaryFile'
+-- and passes the resulting handle to the computation @act@.  The handle
+-- will be closed on exit from 'withBinaryFile', whether by normal
+-- termination or by raising an exception.
+withBinaryFile :: RawFilePath -> IOMode -> (Handle -> IO r) -> IO r
+withBinaryFile name mode = bracket (IO.openBinaryFile (cs name) mode) hClose
+
+-- could also use withResource instead of this approach
+-- using withResource will be more efficient as the handles will be
+-- shared across all the tests
+withHandles :: (Handle -> Handle -> Handle -> Assertion) -> Assertion
+withHandles f =
+  withBinaryFile
+    "/home/j/dev/apps/durden-arcan/kbdfs/out"
+    ReadMode
+    (\outHandle -> do
+       withBinaryFile
+         "/home/j/dev/apps/durden-arcan/kbdfs/modifiers/effective/out"
+         ReadMode
+         (\effectiveModifiersOutHandle -> do
+            withBinaryFile
+              "/home/j/dev/apps/durden-arcan/kbdfs/in"
+              WriteMode
+              (\inHandle -> f outHandle effectiveModifiersOutHandle inHandle)))
+
+
+setInitialState :: ByteString -> Assertion
+setInitialState = BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/ctl"
+
+useCustomDvorak :: Assertion
+useCustomDvorak = setInitialState "customDvorak"
+
+useCustomDvorakSticky :: Assertion
+useCustomDvorakSticky = setInitialState "customDvorakSticky"
+
+testKeyCodeToKeySymTranslations :: Handle -> Handle -> Handle -> Assertion
+testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle =
+  mapM_ (\(kc,g) -> testKeyCodeToKeySymTranslation outHandle effectiveModifiersOutHandle inHandle kc (firstKeySymbolOfGroup g))
     customDvorakKeymap
 
 firstKeySymbolOfGroup :: Group -> Maybe KeySymbol
 firstKeySymbolOfGroup (Group kss) = kss V.!? 0
 firstKeySymbolOfGroup (Groups _ kss) = kss V.!? 0 >>= firstKeySymbolOfGroup
 
-testKeyCodeToKeySymTranslation :: IsString a => KeyCode -> Maybe KeySymbol -> (a -> IO()) -> Assertion
-testKeyCodeToKeySymTranslation _ Nothing _ = return ()
-testKeyCodeToKeySymTranslation kc (Just ks) step = do
-  let (keysym,_,st) = onPress kc (pickInitialState "customDvorak")
-  step "checking Keysymbol"
-  keysym @?= ks
-  let st1 = onRelease kc st
-  step "checking effective modifiers"
-  sEffectiveModifiers st1 @?= 0
-  step "checking latched modifiers"
-  sLatchedModifiers st1 @?= 0
-  step "checking locked modifiers"
-  sLockedModifiers st1 @?= 0
+testKeyCodeToKeySymTranslation :: Handle -> Handle -> Handle -> KeyCode -> Maybe KeySymbol -> Assertion
+testKeyCodeToKeySymTranslation _ _ _ _ Nothing = return ()
+testKeyCodeToKeySymTranslation outHandle effectiveModifiersOutHandle inHandle kc (Just ks) = do
+  BS.hPut inHandle
+    (BS.intercalate "," ["100,100,1", show kc, "1\n"])
+  hFlush inHandle
+  pressResponse <- BS.hGetSome outHandle 8192
+  pressModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
+  let repeat = chomp pressModifiersResponse == "0"
+  pressResponse @?=
+   BS.snoc
+    ( BS.intercalate ","
+      ["100,100,1", show kc , "1", (show . unKeySymbol) ks , (show . fromEnum) repeat, chomp pressModifiersResponse , (show . fst . keySymbolToUTF8) ks , (show . snd . keySymbolToUTF8) ks]) (BSI.c2w '\n')
+  BS.hPut inHandle
+    (BS.intercalate "," ["100,100,1", show kc, "0\n"])
+  hFlush inHandle
+  releaseResponse <- BS.hGetSome outHandle 8192
+  releaseModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
+  releaseResponse @?=
+    BS.intercalate "," ["100,100,1", show kc, "0,0,0",chomp releaseModifiersResponse,"0,0\n"]
 
--- keycode for left shift = 50
--- keycode for a = 38
-testShiftLevelAlphabet01 :: IsString a => (a -> IO()) -> Assertion
-testShiftLevelAlphabet01 step = do
-  let (keysym,_,st) = onPress 50 (pickInitialState "customDvorak")
-      (keysym1,_,st1) = onPress 38 st
-  step "checking Shift Keysymbol"
-  keysym @?= XKB_KEY_Shift_L
-  step "checking Keysymbol"
-  keysym1 @?= XKB_KEY_A
-  step "checking effective modifiers"
-  sEffectiveModifiers st1 @?= setModifier 0 Shift
-  step "checking latched modifiers"
-  sLatchedModifiers st1 @?= 0
-  step "checking locked modifiers"
-  sLockedModifiers st1 @?= 0
-
--- keycode for left shift = 50
--- keycode for q = 53
-testShiftLevelAlphabet02 :: IsString a => (a -> IO()) -> Assertion
-testShiftLevelAlphabet02 step = do
-  let (keysym,_,st) = onPress 50 (pickInitialState "customDvorak")
-      (keysym1,_,st1) = onPress 53 st
-  keysym @?= XKB_KEY_Shift_L
-  keysym1 @?= XKB_KEY_Q
-  sEffectiveModifiers st1 @?= setModifier 0 Shift
-  sLatchedModifiers st1 @?= 0
-  sLockedModifiers st1 @?= 0
+chomp :: ByteString -> ByteString
+chomp bs
+  | last bs == BSI.c2w '\n' = init bs
+  | otherwise = bs
 
 -- testIdentifyStateChanges01 :: Assertion
 -- testIdentifyStateChanges01 =
@@ -300,6 +332,32 @@ testShiftLevelAlphabet02 step = do
 --       -- if there is just a latched Shift then it implies an Effective Shift
 --       -- too, so both should be released
 --   in (onKeyRelease 9 original) @?= (UpdatedStateComponents 0b1010, expected)
+
+-- -- the Shift should not be released
+-- -- A keycode 38, keysymbol 0x41
+-- testShiftLevelAlphabet01 :: Assertion
+-- testShiftLevelAlphabet01 =
+--   let original =
+--         (pickInitialState 1)
+--         { sDepressedModifiers = setModifier 0 Shift
+--         , sEffectiveModifiers = setModifier 0 Shift
+--         , sLatchedModifiers = setModifier 0 Shift
+--         }
+--       expected = original
+--   in (onKeyPress 38 original) @?=
+--      (identifyStateChanges original expected, expected)
+
+-- testShiftLevelAlphabet02 :: Assertion
+-- testShiftLevelAlphabet02 =
+--   let original =
+--         (pickInitialState 1)
+--         { sDepressedModifiers = setModifier 0 Shift
+--         , sEffectiveModifiers = setModifier 0 Shift
+--         , sLatchedModifiers = setModifier 0 Shift
+--         }
+--       expected = original
+--   in (onKeyPress 38 original) @?=
+--      (identifyStateChanges original expected, expected)
 
 -- -- shift twice should become locked with sticky on
 -- -- Shift_L keycode = 50, keysymbol = Shift_L ==> Shift

@@ -62,12 +62,7 @@ data Group
 data ModifierMap = ModifierMap
   { mKeySymbol    :: KeySymbol
   , mModifier     :: Modifier
-  , mWhenPressed  :: State -> State
-  , mWhenReleased :: State -> State
-  }
-
-instance Eq ModifierMap where
-  (ModifierMap k t _ _) == (ModifierMap k1 t1 _ _) = (k == k1) && (t == t1)
+  } deriving (Eq,Show)
 
 type KeyCode = Word16
 
@@ -132,7 +127,7 @@ type Level = Int
 -- TODO could change this to an unboxed vector for performance
 data State = State
   { sKeymap :: V.Vector Group
-  , sOnKeyEvent :: KeySymbol -> Either ModifierMap KeySymbol
+  , sIdentifyModifiers :: KeySymbol -> Either ModifierMap KeySymbol
   , sCalculateLevel :: Modifiers -> Level -- if there is a level change
     -- if there is a level change
     -- that changes state, for example,
@@ -162,10 +157,12 @@ data State = State
   , sLatchedModifiers :: !Modifiers
   , sLockedModifiers :: !Modifiers
   , sName :: !ByteString
+  , sOnPress :: Either ModifierMap KeySymbol -> State -> (KeySymbol, Repeat, State)
+  , sOnRelease :: Either ModifierMap KeySymbol -> State -> State
   }
 
 instance Eq State where
-  (State _ _ _ _ _ eg dg lag locg em dm lam lom name) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb nameb) =
+  (State _ _ _ _ _ eg dg lag locg em dm lam lom name _ _) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb nameb _ _) =
     eg == egb &&
     dg == dgb &&
     lag == lagb &&
@@ -176,7 +173,7 @@ instance Default State where
   def =
     State
       V.empty
-      onKey
+      onKeyTemplate
       shiftIsLevelTwoCalculateLevel
       shiftIsLevelTwoConsumeModifiers
       identity
@@ -189,6 +186,8 @@ instance Default State where
       0
       0
       "default"
+      onPressTemplate
+      onReleaseTemplate
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
@@ -201,40 +200,45 @@ lookupKeyCode keycode state =
 
 type Repeat = Bool
 
-onPress :: KeyCode -> State -> (KeySymbol, Repeat, State)
-onPress keycode state =
-  fromMaybe
-    (XKB_KEY_NoSymbol, False, state)
-    (lookupKeyCode keycode (updateEffectives state) >>=
-     (\keysymbol ->
-        case sOnKeyEvent (traceShowId state) keysymbol of
-          Left (ModifierMap keysym modifier onPressFunction _)
+-- assuming all modifiers do not repeat
+onPressTemplate :: Either ModifierMap KeySymbol -> State -> (KeySymbol, Repeat, State)
+onPressTemplate mks state =
+        case mks of
+          Left (ModifierMap keysym modifier)
           -- not consuming modifiers when a modifier is the result, bug or feature?
           -- updateDepresseds does the same thing as the onPressFunction,
           --   remove it?
            ->
-            Just
               ( keysym
               , False
               , ((traceShowId .
                   updateEffectives .
                   traceShowId .
-                  updateDepresseds modifier .
-                  traceShowId . onPressFunction . traceShowId)
+                  updateDepresseds modifier . traceShowId
+                  . pressModifier keysym modifier . traceShowId)
                    state))
-          Right keysym -> Just (keysym, True, state)))
--- assuming all modifiers do not repeat
+          Right keysym -> (keysym, True, state)
+
+onReleaseTemplate :: Either ModifierMap KeySymbol -> State -> State
+onReleaseTemplate mks state =
+        case mks of
+          Left (ModifierMap ks m) ->
+            traceShowId (( updateEffectives . releaseModifier ks m) state)
+          Right _ -> (updateEffectives) state
+
+onPress :: KeyCode -> State -> (KeySymbol, Repeat, State)
+onPress keycode state =
+  fromMaybe
+    (XKB_KEY_NoSymbol, False, state)
+    (lookupKeyCode keycode (updateEffectives state) >>=
+    (Just . flip (sOnPress state) state . sIdentifyModifiers state))
 
 onRelease :: KeyCode -> State -> State
 onRelease keycode state =
   fromMaybe
     state
     (lookupKeyCode keycode (updateEffectives state) >>=
-     (\keysymbol ->
-        case sOnKeyEvent state keysymbol of
-          Left (ModifierMap ks m _ onReleaseFunction) ->
-            traceShowId ((Just . updateEffectives . onReleaseFunction) state)
-          Right _ -> (Just . updateEffectives) state))
+    (Just . flip (sOnRelease state) state . sIdentifyModifiers state))
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -277,15 +281,10 @@ lookupFromGroup level (Group v) =
     Nothing     -> v V.!? 0 -- if there is only 1 level
 lookupFromGroup _ _ = Nothing
 
-onKey :: KeySymbol -> Either ModifierMap KeySymbol
-onKey XKB_KEY_Control_L =
-  Left
-    (ModifierMap
-       XKB_KEY_Control_L
-       Control
-       (pressModifier XKB_KEY_Control_L Control)
-       (releaseModifier XKB_KEY_Control_L Control))
-onKey k = Right k
+onKeyTemplate :: KeySymbol -> Either ModifierMap KeySymbol
+onKeyTemplate XKB_KEY_Control_L =
+  Left (ModifierMap XKB_KEY_Control_L Control)
+onKeyTemplate k = Right k
 
 -- Pressing Esc when having any locked modifiers releases all
 clearStickyPresses :: State -> State
