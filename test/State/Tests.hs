@@ -35,7 +35,8 @@ tests :: Handle -> Handle -> Handle -> TestTree
 tests outHandle effectiveModifiersOutHandle inHandle =
   testGroup
     "State"
-    [ testCase "testKeyCodeToKeySymTranslations" (testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle)
+    [ testCase "useCustomDvorak" useCustomDvorak
+    , testCase "testKeyCodeToKeySymTranslations" (testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle)
 --    [ testCase "testIdentifyStateChanges01" testIdentifyStateChanges01
 --     , testCase "testIdentifyStateChanges02" testIdentifyStateChanges02
 --     , testCase "testIdentifyStateChanges03" testIdentifyStateChanges03
@@ -68,6 +69,15 @@ tests outHandle effectiveModifiersOutHandle inHandle =
 --     , testCase "testNonStickyLatching01" testNonStickyLatching01
 --     , testCase "testNonStickyLatching02" testNonStickyLatching02
     ]
+
+setInitialState :: ByteString -> Assertion
+setInitialState = BS.appendFile "/home/j/dev/apps/durden-arcan/kbdfs/ctl"
+
+useCustomDvorak :: Assertion
+useCustomDvorak = setInitialState "customDvorak"
+
+useCustomDvorakSticky :: ByteString -> Assertion
+useCustomDvorakSticky = setInitialState "customDvorakSticky"
 
 testKeyCodeToKeySymTranslations :: Handle -> Handle -> Handle -> Assertion
 testKeyCodeToKeySymTranslations outHandle effectiveModifiersOutHandle inHandle =

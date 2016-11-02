@@ -60,9 +60,9 @@ data Group
            (V.Vector Group)
 
 data ModifierMap = ModifierMap
-  { mKeySymbol   :: KeySymbol
-  , mModifier    :: Modifier
-  , mWhenPressed :: State -> State
+  { mKeySymbol    :: KeySymbol
+  , mModifier     :: Modifier
+  , mWhenPressed  :: State -> State
   , mWhenReleased :: State -> State
   }
 
@@ -169,7 +169,8 @@ instance Eq State where
     eg == egb &&
     dg == dgb &&
     lag == lagb &&
-    locg == locgb && em == emb && dm == dmb && lam == lamb && lom == lomb && name == nameb
+    locg == locgb &&
+    em == emb && dm == dmb && lam == lamb && lom == lomb && name == nameb
 
 instance Default State where
   def =
@@ -193,10 +194,10 @@ instance Default State where
 -- generate multiple key symbols
 lookupKeyCode :: KeyCode -> State -> Maybe KeySymbol
 lookupKeyCode keycode state =
-    sKeymap state V.!? fromIntegral keycode >>=
-     -- The lookup group is the same as the effective group
-     lookupGroup (fromIntegral (sEffectiveGroup state)) >>=
-     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state))
+  sKeymap state V.!? fromIntegral keycode >>=
+  -- The lookup group is the same as the effective group
+  lookupGroup (fromIntegral (sEffectiveGroup state)) >>=
+  lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state))
 
 type Repeat = Bool
 
@@ -205,27 +206,35 @@ onPress keycode state =
   fromMaybe
     (XKB_KEY_NoSymbol, False, state)
     (lookupKeyCode keycode (updateEffectives state) >>=
-        (\keysymbol ->
-           case sOnKeyEvent (traceShowId state) keysymbol of
-            Left (ModifierMap keysym modifier onPressFunction _)
-            -- not consuming modifiers when a modifier is the result, bug or feature?
-            -- updateDepresseds does the same thing as the onPressFunction,
-            --   remove it?
-              ->
-                Just ( keysym, False
-                     , ((traceShowId . updateEffectives . traceShowId . updateDepresseds modifier . traceShowId . onPressFunction . traceShowId) state))
-            Right keysym -> Just (keysym,True, state)))
+     (\keysymbol ->
+        case sOnKeyEvent (traceShowId state) keysymbol of
+          Left (ModifierMap keysym modifier onPressFunction _)
+          -- not consuming modifiers when a modifier is the result, bug or feature?
+          -- updateDepresseds does the same thing as the onPressFunction,
+          --   remove it?
+           ->
+            Just
+              ( keysym
+              , False
+              , ((traceShowId .
+                  updateEffectives .
+                  traceShowId .
+                  updateDepresseds modifier .
+                  traceShowId . onPressFunction . traceShowId)
+                   state))
+          Right keysym -> Just (keysym, True, state)))
+-- assuming all modifiers do not repeat
 
-                    -- assuming all modifiers do not repeat
 onRelease :: KeyCode -> State -> State
 onRelease keycode state =
   fromMaybe
     state
     (lookupKeyCode keycode (updateEffectives state) >>=
-        (\keysymbol ->
-            case sOnKeyEvent state keysymbol of
-                Left (ModifierMap ks m _ onReleaseFunction) -> traceShowId ((Just . updateEffectives . onReleaseFunction) state)
-                Right _ -> (Just . updateEffectives) state))
+     (\keysymbol ->
+        case sOnKeyEvent state keysymbol of
+          Left (ModifierMap ks m _ onReleaseFunction) ->
+            traceShowId ((Just . updateEffectives . onReleaseFunction) state)
+          Right _ -> (Just . updateEffectives) state))
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -369,7 +378,7 @@ data ShowState = ShowState
   , ssDepressedModifiers :: ![Modifier] -- ^modifiers that are physically or logically down
   , ssLatchedModifiers   :: ![Modifier]
   , ssLockedModifiers    :: ![Modifier]
-  , ssName    :: !ByteString
+  , ssName               :: !ByteString
   } deriving (Show)
 
 stateToShowState :: State -> ShowState
