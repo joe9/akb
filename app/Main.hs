@@ -13,7 +13,8 @@ import           Data.String.Conversions
 import qualified Data.Text.IO                     as TIO
 import qualified Data.Vector                      as V
 import           Network.Simple.TCP
-import           Protolude                        hiding (State, state)
+import           Protolude                        hiding (State,
+                                                   state)
 import           System.Posix.ByteString.FilePath
 
 -- import           Text.Groom
@@ -126,7 +127,7 @@ inFileWrite _ _ bs _ _ c = do
               dirvbs = (putByteString . show . fromEnum) dir
               ksbs = (putByteString . show) (0 :: Int)
               modsbs = (putByteString . show . sEffectiveModifiers) state
-              utf32bs = (putByteString . show)(0 :: Int)
+              utf32bs = (putByteString . show) (0 :: Int)
               utf8bs = (putByteString . show) (0 :: Int)
               ebs = (putByteString . show) e
               mbs = (putByteString . show) m
@@ -261,7 +262,7 @@ ctlFileWrite _ _ bs _ _ c = do
   case parseOnly ctlParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
     Right state ->
-          return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
+      return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
 -- data Input =
 --   Input KeyCode
