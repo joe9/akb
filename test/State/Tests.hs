@@ -86,17 +86,18 @@ testKeyCodeToKeySymTranslation outHandle effectiveModifiersOutHandle inHandle kc
   hFlush inHandle
   pressResponse <- BS.hGetSome outHandle 8192
   pressModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
+  let repeat = chomp pressModifiersResponse == "0"
   pressResponse @?=
    BS.snoc
     ( BS.intercalate ","
-      ["100,100,1", show kc , "1", (show . unKeySymbol) ks , chomp pressModifiersResponse , (show . fst . keySymbolToUTF8) ks , (show . snd . keySymbolToUTF8) ks]) (BSI.c2w '\n')
+      ["100,100,1", show kc , "1", (show . unKeySymbol) ks , (show . fromEnum) repeat, chomp pressModifiersResponse , (show . fst . keySymbolToUTF8) ks , (show . snd . keySymbolToUTF8) ks]) (BSI.c2w '\n')
   BS.hPut inHandle
     (BS.intercalate "," ["100,100,1", show kc, "0\n"])
   hFlush inHandle
   releaseResponse <- BS.hGetSome outHandle 8192
   releaseModifiersResponse <- BS.hGetSome effectiveModifiersOutHandle 8192
   releaseResponse @?=
-    BS.intercalate "," ["100,100,1", show kc, "0,0",chomp releaseModifiersResponse,"0,0\n"]
+    BS.intercalate "," ["100,100,1", show kc, "0,0,0",chomp releaseModifiersResponse,"0,0\n"]
 
 chomp :: ByteString -> ByteString
 chomp bs

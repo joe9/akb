@@ -23,6 +23,7 @@ customDvorak =
   , sOnKeyEvent = whatToDoWithKeySymbol
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
+  , sName = "customDvorak"
   }
 
 customDvorakSticky :: State
@@ -32,6 +33,7 @@ customDvorakSticky =
   , sOnKeyEvent = stickyWhatToDoWithKeySymbol
   , sCalculateLevel = shiftIsLevelTwoCalculateLevel
   , sConsumeModifiersUsedForCalculatingLevel = shiftIsLevelTwoConsumeModifiers
+  , sName = "customDvorakSticky"
   }
 
 -- instead of the below use evtest to get the actual keycodes

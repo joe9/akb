@@ -21,29 +21,23 @@ import Modifiers
 import State
 
 -- import BitMask
-pickInitialState :: CInt -> State
-pickInitialState 0 = customDvorak
-pickInitialState 1 = customDvorakSticky
-pickInitialState _ = def
-
-pickInitialStateS :: ByteString -> State
-pickInitialStateS s
+pickInitialState :: ByteString -> State
+pickInitialState s
   | s == "customDvorak" = customDvorak
-  | s == "customDvorakStick" = customDvorakSticky
+  | s == "customDvorakSticky" = customDvorakSticky
   | otherwise = def
 
--- skb_state_key_get_utf ptr keyCode = withState ptr (keyCodeToUTF keyCode)
 keyEvent
   :: State
   -> KeyCode
   -> KeyDirection
-  -> (Maybe (KeySymbol, Modifiers, Word32, Word8), State)
+  -> (Maybe (KeySymbol, Repeat, Modifiers, Word32, Word8), State)
 keyEvent state keycode Pressed =
-  (\(kms, state) -> (Just (uncurry addUTF kms), state))
-    (onKeyPress keycode state)
-keyEvent state keycode Released = (Nothing, onKeyRelease keycode state)
+  (\(ks,r, state) -> (addUTF (ks, r, (sEffectiveModifiers state)), state))
+    (onPress keycode state)
+keyEvent state keycode Released = (Nothing, onRelease keycode state)
 
-addUTF :: KeySymbol -> Modifiers -> (KeySymbol, Modifiers, Word32, Word8)
-addUTF ks mods =
+addUTF :: (KeySymbol, Repeat, Modifiers) -> Maybe (KeySymbol, Repeat, Modifiers, Word32, Word8)
+addUTF (ks,r,mods) =
   let (utf32, utf8) = keySymbolToUTF8 ks
-  in (ks, mods, utf32, utf8)
+  in Just (ks, r, mods, utf32, utf8)

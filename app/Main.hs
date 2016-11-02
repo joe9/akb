@@ -36,7 +36,7 @@ import State
 main :: IO ()
 main = do
   TIO.putStrLn
-    (showKeySymbol ((getKeySymbol (pickInitialStateS "customDvorak") 10)))
+    (showKeySymbol ((getKeySymbol (pickInitialState "customDvorak") 10)))
   print (fromBitMask 0 :: [Modifier])
   print (fromBitMask 1 :: [Modifier])
   print (fromBitMask 2 :: [Modifier])
@@ -53,22 +53,22 @@ main = do
   case parseOnly inputParser "100,100,1,10,1\n" of
     Left e -> print e
     Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState 1) kcode dir)
+      print (keyEvent (pickInitialState "customDvorak") kcode dir)
   case parseOnly inputParser "100,100,1,10,1\r\n" of
     Left e -> print e
     Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState 1) kcode dir)
+      print (keyEvent (pickInitialState "customDvorak") kcode dir)
   case parseOnly inputParser "100,100,1,10,1" of
     Left e -> print e
     Right (Input _ _ _ kcode dir) ->
-      print (keyEvent (pickInitialState 1) kcode dir)
+      print (keyEvent (pickInitialState "customDvorak") kcode dir)
   let context =
         (def :: Context State)
-        {cFSItems = fsList, cUserState = pickInitialState 1}
+        {cFSItems = fsList, cUserState = pickInitialState "customDvorak"}
   run9PServer context (Host "127.0.0.1") "5960"
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
-getKeySymbol s k = lookupKeyCode k s
+getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
 
 -- TODO : add stAtime, stMtime, stUid, stGid and stMuid
 -- TODO : use Data.Tree to build this
@@ -77,27 +77,28 @@ fsList :: V.Vector (FSItem (Context State))
 fsList =
   V.fromList
     [ directory "/" 0
-    , inFile "/in" 1
-    , readOnlyFile "/echo" 2
-    , readOnlyFile "/out" 3
-    , directory "/modifiers/" 4
-    , directory "/modifiers/effective" 5
-    , readOnlyFile "/modifiers/effective/out" 6
-    , directory "/modifiers/depressed" 7
-    , readOnlyFile "/modifiers/depressed/out" 8
-    , directory "/modifiers/latched" 9
-    , readOnlyFile "/modifiers/latched/out" 10
-    , directory "/modifiers/locked" 11
-    , readOnlyFile "/modifiers/locked/out" 12
-    , directory "/group/" 13
-    , directory "/group/effective" 14
-    , readOnlyFile "/group/effective/out" 15
-    , directory "/group/depressed" 16
-    , readOnlyFile "/group/depressed/out" 17
-    , directory "/group/latched" 18
-    , readOnlyFile "/group/latched/out" 19
-    , directory "/group/locked" 20
-    , readOnlyFile "/group/locked/out" 21
+    , ctlFile "/ctl" 1
+    , inFile "/in" 2
+    , readOnlyFile "/echo" 3
+    , readOnlyFile "/out" 4
+    , directory "/modifiers/" 5
+    , directory "/modifiers/effective" 6
+    , readOnlyFile "/modifiers/effective/out" 7
+    , directory "/modifiers/depressed" 8
+    , readOnlyFile "/modifiers/depressed/out" 9
+    , directory "/modifiers/latched" 10
+    , readOnlyFile "/modifiers/latched/out" 11
+    , directory "/modifiers/locked" 12
+    , readOnlyFile "/modifiers/locked/out" 13
+    , directory "/group/" 14
+    , directory "/group/effective" 15
+    , readOnlyFile "/group/effective/out" 16
+    , directory "/group/depressed" 17
+    , readOnlyFile "/group/depressed/out" 18
+    , directory "/group/latched" 19
+    , readOnlyFile "/group/latched/out" 20
+    , directory "/group/locked" 21
+    , readOnlyFile "/group/locked/out" 22
     ]
 
 inFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
@@ -130,6 +131,7 @@ inFileWrite _ _ bs _ _ c = do
               ebs = (putByteString . show) e
               mbs = (putByteString . show) m
               tbs = (putByteString . show) t
+              rbs = (putByteString . show . fromEnum) False
               toOut =
                 BS.snoc
                   (BS.intercalate
@@ -142,6 +144,7 @@ inFileWrite _ _ bs _ _ c = do
                         , kcodebs
                         , dirvbs
                         , ksbs
+                        , rbs
                         , modsbs
                         , utf32bs
                         , utf8bs
@@ -179,7 +182,7 @@ inFileWrite _ _ bs _ _ c = do
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
-        (Just (ks, mods, utf32, utf8), state) -> do
+        (Just (ks, r, mods, utf32, utf8), state) -> do
           let fids = cFids c
               kcodebs = (putByteString . show) kcode
               dirvbs = (putByteString . show . fromEnum) dir -- dirbs = (putByteString . cs . show) dir
@@ -190,6 +193,7 @@ inFileWrite _ _ bs _ _ c = do
               ebs = (putByteString . show) e
               mbs = (putByteString . show) m
               tbs = (putByteString . show) t
+              rbs = (putByteString . show . fromEnum) r
               toOut =
                 BS.snoc
                   (BS.intercalate
@@ -202,6 +206,7 @@ inFileWrite _ _ bs _ _ c = do
                         , kcodebs
                         , dirvbs
                         , ksbs
+                        , rbs
                         , modsbs
                         , utf32bs
                         , utf8bs
@@ -238,6 +243,24 @@ inFileWrite _ _ bs _ _ c = do
           -- write to all /group/locked/out read channels
           let toGroupLockedOut = (runPut . putWord32le . sLockedGroup) state
           writeToOpenChannelsOfFSItemAtIndex 21 toGroupLockedOut fids
+          return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
+
+ctlFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
+ctlFile name index =
+  FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = ctlFileWrite}) []
+
+ctlFileWrite
+  :: Fid
+  -> Offset
+  -> ByteString
+  -> FidState
+  -> FSItem s
+  -> (Context State)
+  -> IO (Either NineError Count, (Context State))
+ctlFileWrite _ _ bs _ _ c = do
+  case parseOnly ctlParser bs of
+    Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
+    Right state ->
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
 -- data Input =
@@ -286,3 +309,10 @@ inputParser = do
   --   _ <- endOfLine
   _ <- (endOfLine <|> endOfInput)
   return (Input epoch microseconds itype keyCode (toEnum value))
+
+ctlParser :: Parser State
+ctlParser = do
+  initialState <- string "customDvorak" <|> string "customDvorakSticky"
+  --   _ <- endOfLine
+  _ <- (endOfLine <|> endOfInput)
+  return (pickInitialState initialState)

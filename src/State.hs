@@ -161,14 +161,15 @@ data State = State
   , sDepressedModifiers :: !Modifiers -- modifiers that are physically or logically down
   , sLatchedModifiers :: !Modifiers
   , sLockedModifiers :: !Modifiers
+  , sName :: !ByteString
   }
 
 instance Eq State where
-  (State _ _ _ _ _ eg dg lag locg em dm lam lom) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb) =
+  (State _ _ _ _ _ eg dg lag locg em dm lam lom name) == (State _ _ _ _ _ egb dgb lagb locgb emb dmb lamb lomb nameb) =
     eg == egb &&
     dg == dgb &&
     lag == lagb &&
-    locg == locgb && em == emb && dm == dmb && lam == lamb && lom == lomb
+    locg == locgb && em == emb && dm == dmb && lam == lamb && lom == lomb && name == nameb
 
 instance Default State where
   def =
@@ -186,49 +187,45 @@ instance Default State where
       0
       0
       0
+      "default"
 
 -- TODO change the return type to [KeySymbol] as a keyCode can
 -- generate multiple key symbols
-lookupKeyCode :: KeyCode -> State -> KeySymbol
-lookupKeyCode = onKeyCodeEvent (\_ k -> k) XKB_KEY_NoSymbol
-
-onKeyPress :: KeyCode -> State -> ((KeySymbol, Modifiers), State)
-onKeyPress keycode state =
-  ((\(k, s) -> ((k, sEffectiveModifiers s), s)) . f keycode) updatedEffectives
-  where
-    f k s = onKeyCodeEvent stateChangeOnPress (XKB_KEY_NoSymbol, s) k s
-    updatedEffectives = updateEffectives state
-
-onKeyRelease :: KeyCode -> State -> State
-onKeyRelease keycode state =
-  let updatedEffectivesState = updateEffectives state
-  in (f keycode) updatedEffectivesState
-  where
-    f k s = onKeyCodeEvent stateChangeOnRelease s k s
-
-onKeyCodeEvent :: (State -> KeySymbol -> a) -> a -> KeyCode -> State -> a
-onKeyCodeEvent f defaultValue keycode state =
-  maybe
-    defaultValue
-    (f state)
-    (sKeymap state V.!? fromIntegral keycode >>=
+lookupKeyCode :: KeyCode -> State -> Maybe KeySymbol
+lookupKeyCode keycode state =
+    sKeymap state V.!? fromIntegral keycode >>=
      -- The lookup group is the same as the effective group
      lookupGroup (fromIntegral (sEffectiveGroup state)) >>=
-     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state)))
+     lookupFromGroup (sCalculateLevel state (sEffectiveModifiers state))
 
-keyCodeToUTF :: KeyCode -> State -> (Word32, State)
-keyCodeToUTF keyCode state =
-  onKeyCodeEvent (\_ ks -> (keySymbolToUTF ks, state)) (0, state) keyCode state
+type Repeat = Bool
 
-findIfKeyRepeats :: KeyCode -> State -> Bool
-findIfKeyRepeats = onKeyCodeEvent doesKeyRepeat True
+onPress :: KeyCode -> State -> (KeySymbol, Repeat, State)
+onPress keycode state =
+  fromMaybe
+    (XKB_KEY_NoSymbol, False, state)
+    (lookupKeyCode keycode (updateEffectives state) >>=
+        (\keysymbol ->
+           case sOnKeyEvent (traceShowId state) keysymbol of
+            Left (ModifierMap keysym modifier onPressFunction _)
+            -- not consuming modifiers when a modifier is the result, bug or feature?
+            -- updateDepresseds does the same thing as the onPressFunction,
+            --   remove it?
+              ->
+                Just ( keysym, False
+                     , ((traceShowId . updateEffectives . traceShowId . updateDepresseds modifier . traceShowId . onPressFunction . traceShowId) state))
+            Right keysym -> Just (keysym,True, state)))
 
-doesKeyRepeat :: State -> KeySymbol -> Bool
-doesKeyRepeat s keysymbol =
-  case sOnKeyEvent s keysymbol of
-    Right _ -> True
-    -- assuming all modifiers do not repeat
-    Left _  -> False
+                    -- assuming all modifiers do not repeat
+onRelease :: KeyCode -> State -> State
+onRelease keycode state =
+  fromMaybe
+    state
+    (lookupKeyCode keycode (updateEffectives state) >>=
+        (\keysymbol ->
+            case sOnKeyEvent state keysymbol of
+                Left (ModifierMap ks m _ onReleaseFunction) -> traceShowId ((Just . updateEffectives . onReleaseFunction) state)
+                Right _ -> (Just . updateEffectives) state))
 
 calculateLevel :: State -> Level
 calculateLevel state = sCalculateLevel state (sEffectiveModifiers state)
@@ -318,24 +315,6 @@ releaseModifier :: KeySymbol -> Modifier -> State -> State
 releaseModifier _ m state =
   state {sDepressedModifiers = clearModifier (sDepressedModifiers state) m}
 
-stateChangeOnPress :: State -> KeySymbol -> (KeySymbol, State)
-stateChangeOnPress state keysymbol =
-  case sOnKeyEvent state keysymbol of
-    Left (ModifierMap keysym modifier onPressFunction _)
-    -- not consuming modifiers when a modifier is the result, bug or feature?
-    -- updateDepresseds does the same thing as the onPressFunction,
-    --   remove it?
-     ->
-      ( keysym
-      , (updateEffectives . updateDepresseds modifier . onPressFunction) state)
-    Right keysym -> (keysym, state)
-
-stateChangeOnRelease :: State -> KeySymbol -> State
-stateChangeOnRelease state keysymbol =
-  case sOnKeyEvent state keysymbol of
-    Left (ModifierMap ks m _ onReleaseFunction) -> (updateEffectives . onReleaseFunction) state
-    Right _ -> (updateEffectives . resetLatchesToDepresseds) state
-
 -- if there is no latch set for a depressed modifier, do nothing -- when non-sticky
 -- when there is a latch set and it is a depressed modifier, do nothing
 -- when there is a latch set and it is not a depressed modifier, remove latch
@@ -390,6 +369,7 @@ data ShowState = ShowState
   , ssDepressedModifiers :: ![Modifier] -- ^modifiers that are physically or logically down
   , ssLatchedModifiers   :: ![Modifier]
   , ssLockedModifiers    :: ![Modifier]
+  , ssName    :: !ByteString
   } deriving (Show)
 
 stateToShowState :: State -> ShowState
@@ -403,6 +383,7 @@ stateToShowState state =
     (fromBitMask (sDepressedModifiers state))
     (fromBitMask (sLatchedModifiers state))
     (fromBitMask (sLockedModifiers state))
+    (sName state)
 
 instance Show State where
   show = groom . stateToShowState
