@@ -75,17 +75,14 @@ akbContext =
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
 
--- putting the out and echo files at the top as they will be most
---   written-to files and hence searched for the most.
--- could avoid this by using a Data.Map with key = hashable value of absolute name
 tree :: Tree ((RawFilePath -> FSItemId -> FSItem (Context State)), RawFilePath)
 tree =
   Node
     (directory, "/")
-    [ Node (readOnlyFile, "out") []
-    , Node (readOnlyFile, "echo") []
-    , Node (ctlFile, "ctl") []
+    [ Node (ctlFile, "ctl") []
     , Node (inFile, "in") []
+    , Node (readOnlyFile, "echo") []
+    , Node (readOnlyFile, "out") []
     , Node
         (directory, "modifiers")
         [ Node (directory, "effective") [Node (readOnlyFile, "out") []]
