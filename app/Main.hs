@@ -70,9 +70,7 @@ main = run9PServer akbContext (Host "127.0.0.1") "5960"
 akbContext :: Context State
 akbContext =
   (def :: Context State)
-  { cFSItems = treeToFSItemsVector tree
-  , cUserState = pickInitialState "customDvorak"
-  }
+  {cFSItems = treeToFSItems tree, cUserState = pickInitialState "customDvorak"}
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
@@ -80,7 +78,7 @@ getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
 -- putting the out and echo files at the top as they will be most
 --   written-to files and hence searched for the most.
 -- could avoid this by using a Data.Map with key = hashable value of absolute name
-tree :: Tree ((RawFilePath -> FSItemsIndex -> FSItem (Context State)), RawFilePath)
+tree :: Tree ((RawFilePath -> FSItemId -> FSItem (Context State)), RawFilePath)
 tree =
   Node
     (directory, "/")
@@ -131,19 +129,22 @@ tree =
 --     , directory "/group/locked" 21
 --     , readOnlyFile "/group/locked/out" 22
 --     ]
-inFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
+inFile :: RawFilePath -> FSItemId -> FSItem (Context State)
 inFile name index =
-  FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = inFileWrite}) []
+  FSItem
+    Occupied
+    ((writeOnlyFileDetails name index) {dWrite = inFileWrite})
+    (mkAbsolutePath name)
+    index
 
 inFileWrite
   :: Fid
   -> Offset
   -> ByteString
-  -> FidState
   -> FSItem s
-  -> (Context State)
-  -> IO (Either NineError Count, (Context State))
-inFileWrite _ _ bs _ _ c = do
+  -> Context State
+  -> IO (Either NineError Count, Context State)
+inFileWrite _ _ bs _ c = do
   writeToOpenChannelsOf "/echo" bs c
   case parseOnly inputParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
@@ -284,19 +285,22 @@ inFileWrite _ _ bs _ _ c = do
           writeToOpenChannelsOf "/group/locked/out" toGroupLockedOut c
           return ((Right . fromIntegral . BS.length) bs, c {cUserState = state})
 
-ctlFile :: RawFilePath -> FSItemsIndex -> FSItem (Context State)
+ctlFile :: RawFilePath -> FSItemId -> FSItem (Context State)
 ctlFile name index =
-  FSItem Occupied ((writeOnlyFileDetails name index) {dWrite = ctlFileWrite}) []
+  FSItem
+    Occupied
+    ((writeOnlyFileDetails name index) {dWrite = ctlFileWrite})
+    (mkAbsolutePath name)
+    index
 
 ctlFileWrite
   :: Fid
   -> Offset
   -> ByteString
-  -> FidState
   -> FSItem s
   -> (Context State)
   -> IO (Either NineError Count, (Context State))
-ctlFileWrite _ _ bs _ _ c = do
+ctlFileWrite _ _ bs _ c = do
   case parseOnly ctlParser bs of
     Left e -> return ((Left . OtherError) (BS.append (cs e) bs), c)
     Right state ->
