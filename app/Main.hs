@@ -26,9 +26,9 @@ import Data.NineP
 import Network.NineP.Context
 import Network.NineP.Directory
 import Network.NineP.Error
-import Network.NineP.ReadOnlyFile
+import Network.NineP.ReadOnlyPipe
 import Network.NineP.Server
-import Network.NineP.WriteOnlyFile
+import Network.NineP.WriteOnlyPipe
 
 -- import           Network.NineP.Functions
 import Akb
@@ -64,13 +64,17 @@ import State
 --     Right (Input _ _ _ kcode dir) ->
 --       print (keyEvent (pickInitialState "customDvorak") kcode dir)
 main :: IO ()
-main = run9PServer akbContext (Host "127.0.0.1") "5960"
+main =
+  run9PServer
+    (akbContext (pickInitialState "customDvorak"))
+    (Host "127.0.0.1")
+    "5960"
 
 -- showFSItems to look at the vector of FSItems
-akbContext :: Context State
-akbContext =
-  (def :: Context State)
-  {cFSItems = treeToFSItems tree, cUserState = pickInitialState "customDvorak"}
+akbContext :: State -> Context State
+akbContext s =
+  (defaultContext (pickInitialState "customDvorak"))
+  {cFSItems = treeToFSItems tree}
 
 getKeySymbol :: State -> KeyCode -> KeySymbol
 getKeySymbol s k = fromMaybe XKB_KEY_NoSymbol (lookupKeyCode k s)
@@ -81,21 +85,21 @@ tree =
     (directory, "/")
     [ Node (ctlFile, "ctl") []
     , Node (inFile, "in") []
-    , Node (readOnlyFile, "echo") []
-    , Node (readOnlyFile, "out") []
+    , Node (readOnlyPipe, "echo") []
+    , Node (readOnlyPipe, "out") []
     , Node
         (directory, "modifiers")
-        [ Node (directory, "effective") [Node (readOnlyFile, "out") []]
-        , Node (directory, "depressed") [Node (readOnlyFile, "out") []]
-        , Node (directory, "latched") [Node (readOnlyFile, "out") []]
-        , Node (directory, "locked") [Node (readOnlyFile, "out") []]
+        [ Node (directory, "effective") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "depressed") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "latched") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "locked") [Node (readOnlyPipe, "out") []]
         ]
     , Node
         (directory, "group")
-        [ Node (directory, "effective") [Node (readOnlyFile, "out") []]
-        , Node (directory, "depressed") [Node (readOnlyFile, "out") []]
-        , Node (directory, "latched") [Node (readOnlyFile, "out") []]
-        , Node (directory, "locked") [Node (readOnlyFile, "out") []]
+        [ Node (directory, "effective") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "depressed") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "latched") [Node (readOnlyPipe, "out") []]
+        , Node (directory, "locked") [Node (readOnlyPipe, "out") []]
         ]
     ]
 
@@ -105,32 +109,32 @@ tree =
 --     [ directory "/" 0
 --     , ctlFile "/ctl" 1
 --     , inFile "/in" 2
---     , readOnlyFile "/echo" 3
---     , readOnlyFile "/out" 4
+--     , readOnlyPipe "/echo" 3
+--     , readOnlyPipe "/out" 4
 --     , directory "/modifiers/" 5
 --     , directory "/modifiers/effective" 6
---     , readOnlyFile "/modifiers/effective/out" 7
+--     , readOnlyPipe "/modifiers/effective/out" 7
 --     , directory "/modifiers/depressed" 8
---     , readOnlyFile "/modifiers/depressed/out" 9
+--     , readOnlyPipe "/modifiers/depressed/out" 9
 --     , directory "/modifiers/latched" 10
---     , readOnlyFile "/modifiers/latched/out" 11
+--     , readOnlyPipe "/modifiers/latched/out" 11
 --     , directory "/modifiers/locked" 12
---     , readOnlyFile "/modifiers/locked/out" 13
+--     , readOnlyPipe "/modifiers/locked/out" 13
 --     , directory "/group/" 14
 --     , directory "/group/effective" 15
---     , readOnlyFile "/group/effective/out" 16
+--     , readOnlyPipe "/group/effective/out" 16
 --     , directory "/group/depressed" 17
---     , readOnlyFile "/group/depressed/out" 18
+--     , readOnlyPipe "/group/depressed/out" 18
 --     , directory "/group/latched" 19
---     , readOnlyFile "/group/latched/out" 20
+--     , readOnlyPipe "/group/latched/out" 20
 --     , directory "/group/locked" 21
---     , readOnlyFile "/group/locked/out" 22
+--     , readOnlyPipe "/group/locked/out" 22
 --     ]
 inFile :: RawFilePath -> FSItemId -> FSItem (Context State)
 inFile name index =
   FSItem
     Occupied
-    ((writeOnlyFileDetails name index) {dWrite = inFileWrite})
+    ((writeOnlyPipeDetails name index) {dWrite = inFileWrite})
     (mkAbsolutePath name)
     index
 
@@ -286,7 +290,7 @@ ctlFile :: RawFilePath -> FSItemId -> FSItem (Context State)
 ctlFile name index =
   FSItem
     Occupied
-    ((writeOnlyFileDetails name index) {dWrite = ctlFileWrite})
+    ((writeOnlyPipeDetails name index) {dWrite = ctlFileWrite})
     (mkAbsolutePath name)
     index
 
